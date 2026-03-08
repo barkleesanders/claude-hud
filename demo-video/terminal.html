@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=900, initial-scale=1.0">
+  <title>claude-hud demo</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    .terminal {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      width: 880px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+
+    .terminal-header {
+      background: #1c2128;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      color: #8b949e;
+      font-size: 13px;
+    }
+
+    .terminal-body {
+      padding: 20px 24px 24px;
+      min-height: 340px;
+    }
+
+    .hud-line {
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      white-space: pre;
+      margin-bottom: 2px;
+    }
+
+    .hud-line.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hud-line.spacer { margin-bottom: 8px; }
+
+    /* Colors matching the actual HUD output */
+    .cyan { color: #58a6ff; }
+    .green { color: #3fb950; }
+    .yellow { color: #d29922; }
+    .red { color: #f85149; }
+    .magenta { color: #bc8cff; }
+    .orange { color: #ffb055; }
+    .dim { color: #484f58; }
+    .white { color: #e6edf3; }
+
+    .bar-filled { color: #3fb950; }
+    .bar-empty { color: #484f58; }
+    .bar-yellow { color: #d29922; }
+    .bar-orange { color: #ffb055; }
+    .bar-red { color: #f85149; }
+
+    .prompt-line {
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      margin-top: 16px;
+      border-top: 1px solid #21262d;
+      padding-top: 12px;
+    }
+    .prompt-line.visible { opacity: 1; }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: #58a6ff;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .label {
+      display: inline-block;
+      font-size: 11px;
+      color: #8b949e;
+      margin-top: 12px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .label.visible { opacity: 1; }
+
+    .progress-bar-bg {
+      display: inline-block;
+      letter-spacing: 1px;
+    }
+
+    /* Annotation callouts */
+    .annotation {
+      position: absolute;
+      font-size: 11px;
+      color: #8b949e;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+    .annotation.visible { opacity: 1; }
+    .annotation::before {
+      content: '←';
+      margin-right: 4px;
+      color: #484f58;
+    }
+  </style>
+</head>
+<body>
+  <div class="terminal" data-ready>
+    <div class="terminal-header">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+      <div class="terminal-title">claude-hud — Claude Code Status Line</div>
+    </div>
+    <div class="terminal-body" id="hud">
+      <!-- Line 1: Session -->
+      <div class="hud-line" id="line-session">
+<span class="cyan">[Opus 4.6]</span> <span class="bar-filled">████████</span><span class="bar-empty">░░</span> <span class="yellow">78%</span> <span class="dim">│</span> <span class="green">main</span><span class="red">*</span> <span class="dim">│</span> <span class="dim">2 CLAUDE.md</span> <span class="dim">│</span> <span class="dim">5 MCPs</span> <span class="dim">│</span> <span class="dim">4 hooks</span> <span class="dim">│</span> <span class="dim">⏱️ 23m</span> <span class="dim">│</span> <span class="magenta">◐ thinking</span>
+      </div>
+
+      <!-- Line 2: Tools -->
+      <div class="hud-line" id="line-tools">
+<span class="yellow">◐</span> <span class="cyan">Edit</span><span class="dim">: .../auth.ts</span> <span class="dim">│</span> <span class="green">✓</span> Read <span class="dim">×4</span> <span class="dim">│</span> <span class="green">✓</span> Grep <span class="dim">×3</span> <span class="dim">│</span> <span class="green">✓</span> Bash <span class="dim">×2</span>
+      </div>
+
+      <!-- Line 3: Agents -->
+      <div class="hud-line" id="line-agents">
+<span class="yellow">◐</span> <span class="magenta">Explore</span> <span class="dim">[haiku]</span><span class="dim">: Finding auth patterns</span> <span class="dim">(1m 32s)</span>
+      </div>
+
+      <!-- Line 4: Todos -->
+      <div class="hud-line" id="line-todos">
+<span class="yellow">▸</span> Fix authentication token refresh <span class="dim">(2/5)</span>
+      </div>
+
+      <!-- Spacer -->
+      <div class="hud-line spacer" id="line-spacer">&nbsp;</div>
+
+      <!-- Rate limits -->
+      <div class="hud-line" id="line-rate-current">
+<span class="white">current</span> <span class="progress-bar-bg"><span class="bar-filled">●●</span><span class="bar-empty">○○○○○○○○</span></span> <span class="green"> 21%</span> <span class="dim">⟳</span> <span class="white">3:00pm</span>
+      </div>
+
+      <div class="hud-line" id="line-rate-weekly">
+<span class="white">weekly</span>  <span class="progress-bar-bg"><span class="bar-orange">●●●●●</span><span class="bar-empty">○○○○○</span></span> <span class="orange"> 52%</span> <span class="dim">⟳</span> <span class="white">mar 12, 8:00pm</span>
+      </div>
+
+      <div class="hud-line" id="line-rate-extra">
+<span class="white">extra</span>   <span class="progress-bar-bg"><span class="bar-empty">○○○○○○○○○○</span></span> <span class="green">$0.00</span><span class="dim">/</span><span class="white">$50.00</span>
+      </div>
+
+      <!-- Simulated prompt -->
+      <div class="prompt-line" id="prompt">
+        <span class="dim">$</span> <span class="white">Fix the auth token refresh bug in the OAuth handler</span><span class="cursor-blink"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const delays = [
+      ['line-session', 300],
+      ['line-tools', 700],
+      ['line-agents', 1100],
+      ['line-todos', 1500],
+      ['line-spacer', 1800],
+      ['line-rate-current', 2100],
+      ['line-rate-weekly', 2500],
+      ['line-rate-extra', 2900],
+      ['prompt', 3500],
+    ];
+
+    delays.forEach(([id, delay]) => {
+      setTimeout(() => {
+        document.getElementById(id).classList.add('visible');
+      }, delay);
+    });
+  </script>
+</body>
+</html>

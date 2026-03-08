@@ -2,12 +2,18 @@ import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
 import { render } from './render/index.js';
 import { countConfigs } from './config-reader.js';
+import { fetchUsageData } from './rate-limits.js';
+import { getGitInfo } from './git-info.js';
+import { readThinkingEnabled } from './config-reader.js';
 import { fileURLToPath } from 'node:url';
 export async function main(overrides = {}) {
     const deps = {
         readStdin,
         parseTranscript,
         countConfigs,
+        fetchUsageData,
+        getGitInfo,
+        readThinkingEnabled,
         render,
         now: () => Date.now(),
         log: console.log,
@@ -23,6 +29,11 @@ export async function main(overrides = {}) {
         const transcript = await deps.parseTranscript(transcriptPath);
         const { claudeMdCount, rulesCount, mcpCount, hooksCount } = await deps.countConfigs(stdin.cwd);
         const sessionDuration = formatSessionDuration(transcript.sessionStart, deps.now);
+        const [usageData, gitInfo, thinkingEnabled] = await Promise.all([
+            deps.fetchUsageData(),
+            Promise.resolve(deps.getGitInfo(stdin.cwd)),
+            Promise.resolve(deps.readThinkingEnabled()),
+        ]);
         const ctx = {
             stdin,
             transcript,
@@ -31,6 +42,9 @@ export async function main(overrides = {}) {
             mcpCount,
             hooksCount,
             sessionDuration,
+            gitInfo,
+            thinkingEnabled,
+            usageData,
         };
         deps.render(ctx);
     }

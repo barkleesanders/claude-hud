@@ -41,6 +41,25 @@ export interface TranscriptData {
     todos: TodoItem[];
     sessionStart?: Date;
 }
+export interface GitInfo {
+    branch: string;
+    dirty: boolean;
+}
+export interface RateLimitWindow {
+    utilization: number;
+    resets_at?: string;
+}
+export interface ExtraUsage {
+    is_enabled: boolean;
+    utilization: number;
+    used_credits: number;
+    monthly_limit: number;
+}
+export interface UsageData {
+    five_hour: RateLimitWindow;
+    seven_day: RateLimitWindow;
+    extra_usage?: ExtraUsage;
+}
 export interface RenderContext {
     stdin: StdinData;
     transcript: TranscriptData;
@@ -49,5 +68,8 @@ export interface RenderContext {
     mcpCount: number;
     hooksCount: number;
     sessionDuration: string;
+    gitInfo: GitInfo | null;
+    thinkingEnabled: boolean;
+    usageData: UsageData | null;
 }
 //# sourceMappingURL=types.d.ts.map

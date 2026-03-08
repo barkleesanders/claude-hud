@@ -2,6 +2,9 @@ import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
 import { render } from './render/index.js';
 import { countConfigs } from './config-reader.js';
+import { fetchUsageData } from './rate-limits.js';
+import { getGitInfo } from './git-info.js';
+import { readThinkingEnabled } from './config-reader.js';
 import type { RenderContext } from './types.js';
 import { fileURLToPath } from 'node:url';
 
@@ -9,6 +12,9 @@ export type MainDeps = {
   readStdin: typeof readStdin;
   parseTranscript: typeof parseTranscript;
   countConfigs: typeof countConfigs;
+  fetchUsageData: typeof fetchUsageData;
+  getGitInfo: typeof getGitInfo;
+  readThinkingEnabled: typeof readThinkingEnabled;
   render: typeof render;
   now: () => number;
   log: (...args: unknown[]) => void;
@@ -19,6 +25,9 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
     readStdin,
     parseTranscript,
     countConfigs,
+    fetchUsageData,
+    getGitInfo,
+    readThinkingEnabled,
     render,
     now: () => Date.now(),
     log: console.log,
@@ -40,6 +49,12 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
 
     const sessionDuration = formatSessionDuration(transcript.sessionStart, deps.now);
 
+    const [usageData, gitInfo, thinkingEnabled] = await Promise.all([
+      deps.fetchUsageData(),
+      Promise.resolve(deps.getGitInfo(stdin.cwd)),
+      Promise.resolve(deps.readThinkingEnabled()),
+    ]);
+
     const ctx: RenderContext = {
       stdin,
       transcript,
@@ -48,6 +63,9 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
       mcpCount,
       hooksCount,
       sessionDuration,
+      gitInfo,
+      thinkingEnabled,
+      usageData,
     };
 
     deps.render(ctx);

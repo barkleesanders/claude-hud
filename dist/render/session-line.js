@@ -1,11 +1,17 @@
 import { getContextPercent, getModelName } from '../stdin.js';
-import { coloredBar, cyan, dim, red, getContextColor, RESET } from './colors.js';
+import { coloredBar, cyan, dim, red, green, magenta, getContextColor, RESET } from './colors.js';
+const RED_RGB = '\x1b[38;2;255;85;85m';
 export function renderSessionLine(ctx) {
     const model = getModelName(ctx.stdin);
     const percent = getContextPercent(ctx.stdin);
     const bar = coloredBar(percent);
     const parts = [];
     parts.push(`${cyan(`[${model}]`)} ${bar} ${getContextColor(percent)}${percent}%${RESET}`);
+    // Git info
+    if (ctx.gitInfo) {
+        const dirtyMark = ctx.gitInfo.dirty ? `${RED_RGB}*${RESET}` : '';
+        parts.push(`${green(ctx.gitInfo.branch)}${dirtyMark}`);
+    }
     if (ctx.claudeMdCount > 0) {
         parts.push(dim(`${ctx.claudeMdCount} CLAUDE.md`));
     }
@@ -20,6 +26,13 @@ export function renderSessionLine(ctx) {
     }
     if (ctx.sessionDuration) {
         parts.push(dim(`⏱️  ${ctx.sessionDuration}`));
+    }
+    // Thinking mode indicator
+    if (ctx.thinkingEnabled) {
+        parts.push(magenta('◐ thinking'));
+    }
+    else {
+        parts.push(dim('◑ thinking'));
     }
     let line = parts.join(' | ');
     if (percent >= 85) {

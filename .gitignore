@@ -55,3 +55,7 @@ temp/
 # bun.lock
 package-lock.json
 yarn.lock
+
+# WebReel recording artifacts
+.webreel/
+assets/demo.mp4

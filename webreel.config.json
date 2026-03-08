@@ -1,0 +1,21 @@
+{
+  "$schema": "https://webreel.dev/schema/v1.json",
+  "outDir": "assets/",
+  "viewport": { "width": 960, "height": 540 },
+  "defaultDelay": 200,
+  "videos": {
+    "demo": {
+      "url": "demo-video/terminal.html",
+      "fps": 30,
+      "quality": 90,
+      "output": "demo.mp4",
+      "waitFor": "[data-ready]",
+      "steps": [
+        { "action": "pause", "ms": 500 },
+        { "action": "pause", "ms": 4500 },
+        { "action": "screenshot", "output": "assets/screenshot.png" },
+        { "action": "pause", "ms": 2000 }
+      ]
+    }
+  }
+}

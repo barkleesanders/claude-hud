@@ -116,4 +116,17 @@ export async function countConfigs(cwd) {
     }
     return { claudeMdCount, rulesCount, mcpCount, hooksCount };
 }
+export function readThinkingEnabled() {
+    const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+    if (!fs.existsSync(settingsPath))
+        return false;
+    try {
+        const content = fs.readFileSync(settingsPath, 'utf8');
+        const settings = JSON.parse(content);
+        return settings.alwaysThinkingEnabled === true;
+    }
+    catch {
+        return false;
+    }
+}
 //# sourceMappingURL=config-reader.js.map

@@ -1,7 +1,7 @@
 {
   "name": "claude-hud",
-  "version": "0.0.1",
-  "description": "Real-time statusline HUD for Claude Code",
+  "version": "1.0.0",
+  "description": "Real-time heads-up display for Claude Code — context health, tool activity, agent tracking, rate limits, git status",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -10,11 +10,22 @@
     "test": "npm run build && node --test",
     "test:coverage": "npm run build && c8 --reporter=text --reporter=lcov node --test",
     "test:update-snapshots": "UPDATE_SNAPSHOTS=1 npm test",
-    "test:stdin": "echo '{\"model\":{\"display_name\":\"Opus\"},\"context_window\":{\"current_usage\":{\"input_tokens\":45000},\"context_window_size\":200000},\"transcript_path\":\"/tmp/test.jsonl\"}' | node dist/index.js"
+    "test:stdin": "echo '{\"model\":{\"display_name\":\"Opus 4.6\"},\"context_window\":{\"current_usage\":{\"input_tokens\":45000},\"context_window_size\":200000},\"cwd\":\".\"}'  | node dist/index.js"
   },
-  "keywords": ["claude-code", "statusline", "hud"],
-  "author": "Jarrod Watts",
+  "keywords": ["claude-code", "statusline", "hud", "rate-limits", "git", "cli"],
+  "author": "Barklee Sanders",
+  "contributors": [
+    "Jarrod Watts <https://github.com/jarrodwatts>"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/barkleesanders/claude-hud.git"
+  },
+  "homepage": "https://github.com/barkleesanders/claude-hud",
+  "bugs": {
+    "url": "https://github.com/barkleesanders/claude-hud/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
