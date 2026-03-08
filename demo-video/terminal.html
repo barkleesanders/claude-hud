@@ -184,15 +184,19 @@
 
       <!-- Rate limits -->
       <div class="hud-line" id="line-rate-current">
-<span class="white">current</span> <span class="progress-bar-bg"><span class="bar-filled">●●</span><span class="bar-empty">○○○○○○○○</span></span> <span class="green"> 21%</span> <span class="dim">⟳</span> <span class="white">3:00pm</span>
+<span class="white">current  </span> <span class="progress-bar-bg"><span class="bar-filled">●●</span><span class="bar-empty">○○○○○○○○</span></span> <span class="green"> 21%</span> <span class="dim">⟳</span> <span class="white">3:00pm</span>
       </div>
 
       <div class="hud-line" id="line-rate-weekly">
-<span class="white">weekly</span>  <span class="progress-bar-bg"><span class="bar-orange">●●●●●</span><span class="bar-empty">○○○○○</span></span> <span class="orange"> 52%</span> <span class="dim">⟳</span> <span class="white">mar 12, 8:00pm</span>
+<span class="white">weekly   </span> <span class="progress-bar-bg"><span class="bar-orange">●●●●●</span><span class="bar-empty">○○○○○</span></span> <span class="orange"> 52%</span> <span class="dim">⟳</span> <span class="white">mar 12, 8:00pm</span>
+      </div>
+
+      <div class="hud-line" id="line-rate-sonnet">
+<span class="white">sonnet 7d</span> <span class="progress-bar-bg"><span class="bar-empty">○○○○○○○○○○</span></span> <span class="green">  0%</span> <span class="dim">⟳</span> <span class="white">mar 12, 8:00pm</span>
       </div>
 
       <div class="hud-line" id="line-rate-extra">
-<span class="white">extra</span>   <span class="progress-bar-bg"><span class="bar-empty">○○○○○○○○○○</span></span> <span class="green">$0.00</span><span class="dim">/</span><span class="white">$50.00</span>
+<span class="white">extra    </span> <span class="progress-bar-bg"><span class="bar-empty">○○○○○○○○○○</span></span> <span class="green">$0.00</span><span class="dim">/</span><span class="white">$50.00</span>
       </div>
 
       <!-- Simulated prompt -->
@@ -211,8 +215,9 @@
       ['line-spacer', 1800],
       ['line-rate-current', 2100],
       ['line-rate-weekly', 2500],
-      ['line-rate-extra', 2900],
-      ['prompt', 3500],
+      ['line-rate-sonnet', 2900],
+      ['line-rate-extra', 3300],
+      ['prompt', 3900],
     ];
 
     delays.forEach(([id, delay]) => {
