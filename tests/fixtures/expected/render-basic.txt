@@ -1,4 +1,8 @@
-[Opus] ██░░░░░░░░ 23%
+[Opus] ██░░░░░░░░ 23% | ◑ thinking
 ◐ Edit: .../authentication.ts | ✓ Read ×1
 ✓ explore [haiku]: Finding auth code (<1s)
 ▸ Add tests (1/2)
+
+current ●●○○○○○○○○  24% ⟳ 3:00pm
+weekly  ●●●●●○○○○○  52% ⟳ mar 12, 8:00pm
+extra   ○○○○○○○○○○ $0.00/$50.00

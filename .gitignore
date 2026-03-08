@@ -51,9 +51,8 @@ tmp/
 temp/
 *.tmp
 
-# Lock files (optional - keep bun.lock for reproducibility)
+# Lock files (keep package-lock.json for CI, bun.lock for local)
 # bun.lock
-package-lock.json
 yarn.lock
 
 # WebReel recording artifacts
