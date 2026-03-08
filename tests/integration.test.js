@@ -35,7 +35,12 @@ test('CLI renders expected output for a basic transcript', async () => {
       cwd: path.resolve(process.cwd()),
       input: stdin,
       encoding: 'utf8',
-      env: { ...process.env, HOME: homeDir },
+      env: {
+        ...process.env,
+        HOME: homeDir,
+        // Prevent rate limit cache from leaking into snapshot
+        CLAUDE_HUD_SKIP_RATE_LIMITS: '1',
+      },
     });
 
     assert.equal(result.status, 0, result.stderr || 'non-zero exit');

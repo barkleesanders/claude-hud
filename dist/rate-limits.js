@@ -83,6 +83,9 @@ function writeCache(data) {
     }
 }
 export async function fetchUsageData() {
+    // Allow tests to skip rate limits entirely
+    if (process.env.CLAUDE_HUD_SKIP_RATE_LIMITS === '1')
+        return null;
     // Check cache first
     const cached = readCache();
     if (cached)

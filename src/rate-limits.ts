@@ -105,6 +105,9 @@ function writeCache(data: UsageData): void {
 }
 
 export async function fetchUsageData(): Promise<UsageData | null> {
+  // Allow tests to skip rate limits entirely
+  if (process.env.CLAUDE_HUD_SKIP_RATE_LIMITS === '1') return null;
+
   // Check cache first
   const cached = readCache();
   if (cached) return cached;
