@@ -23,7 +23,9 @@ export interface UsageData {
 
 const CACHE_DIR = '/tmp/claude';
 const CACHE_FILE = path.join(CACHE_DIR, 'statusline-usage-cache.json');
-const CACHE_MAX_AGE_MS = 60_000;
+const COOLDOWN_FILE = path.join(CACHE_DIR, 'statusline-usage-cooldown');
+const CACHE_MAX_AGE_MS = 300_000; // 5 minutes — rate limits change slowly
+const COOLDOWN_MS = 30_000; // 30s backoff after API failure
 
 function getOAuthToken(): string | null {
   // 1. Environment variable
@@ -104,22 +106,47 @@ function writeCache(data: UsageData): void {
   }
 }
 
-export async function fetchUsageData(): Promise<UsageData | null> {
-  // Allow tests to skip rate limits entirely
-  if (process.env.CLAUDE_HUD_SKIP_RATE_LIMITS === '1') return null;
-
-  // Check cache first
-  const cached = readCache();
-  if (cached) return cached;
-
-  const token = getOAuthToken();
-  if (!token) return null;
-
+function isOnCooldown(): boolean {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    if (!fs.existsSync(COOLDOWN_FILE)) return false;
+    const stat = fs.statSync(COOLDOWN_FILE);
+    return (Date.now() - stat.mtimeMs) < COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
 
-    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+function setCooldown(): void {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) {
+      fs.mkdirSync(CACHE_DIR, { recursive: true });
+    }
+    fs.writeFileSync(COOLDOWN_FILE, '');
+  } catch {
+    // Non-critical
+  }
+}
+
+async function fetchFromApi(token: string): Promise<UsageData | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'anthropic-beta': 'oauth-2025-04-20',
+      'User-Agent': 'claude-hud/1.0',
+    },
+    signal: controller.signal,
+  });
+
+  clearTimeout(timeout);
+
+  if (response.status === 429) {
+    // Retry once immediately (API returns retry-after: 0)
+    const retry = await fetch('https://api.anthropic.com/api/oauth/usage', {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -127,23 +154,16 @@ export async function fetchUsageData(): Promise<UsageData | null> {
         'anthropic-beta': 'oauth-2025-04-20',
         'User-Agent': 'claude-hud/1.0',
       },
-      signal: controller.signal,
     });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as UsageData;
-    if (data?.five_hour) {
-      writeCache(data);
-      return data;
-    }
-  } catch {
-    // Network error, timeout, etc.
+    if (!retry.ok) return null;
+    return (await retry.json()) as UsageData;
   }
 
-  // Fall back to stale cache if fetch failed
+  if (!response.ok) return null;
+  return (await response.json()) as UsageData;
+}
+
+function readStaleCache(): UsageData | null {
   try {
     if (fs.existsSync(CACHE_FILE)) {
       const content = fs.readFileSync(CACHE_FILE, 'utf8');
@@ -152,6 +172,36 @@ export async function fetchUsageData(): Promise<UsageData | null> {
   } catch {
     // Nothing available
   }
-
   return null;
+}
+
+export async function fetchUsageData(): Promise<UsageData | null> {
+  // Allow tests to skip rate limits entirely
+  if (process.env.CLAUDE_HUD_SKIP_RATE_LIMITS === '1') return null;
+
+  // Check cache first
+  const cached = readCache();
+  if (cached) return cached;
+
+  // Don't hammer the API if it recently failed
+  if (isOnCooldown()) return readStaleCache();
+
+  const token = getOAuthToken();
+  if (!token) return null;
+
+  try {
+    const data = await fetchFromApi(token);
+    if (data?.five_hour) {
+      writeCache(data);
+      return data;
+    }
+  } catch {
+    // Network error, timeout, etc.
+  }
+
+  // Mark cooldown so we don't retry for 30s
+  setCooldown();
+
+  // Fall back to stale cache
+  return readStaleCache();
 }

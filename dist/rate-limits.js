@@ -4,7 +4,9 @@ import * as os from 'os';
 import { execSync } from 'child_process';
 const CACHE_DIR = '/tmp/claude';
 const CACHE_FILE = path.join(CACHE_DIR, 'statusline-usage-cache.json');
-const CACHE_MAX_AGE_MS = 60_000;
+const COOLDOWN_FILE = path.join(CACHE_DIR, 'statusline-usage-cooldown');
+const CACHE_MAX_AGE_MS = 300_000; // 5 minutes — rate limits change slowly
+const COOLDOWN_MS = 30_000; // 30s backoff after API failure
 function getOAuthToken() {
     // 1. Environment variable
     const envToken = process.env.CLAUDE_CODE_OAUTH_TOKEN;
@@ -82,21 +84,45 @@ function writeCache(data) {
         // Non-critical
     }
 }
-export async function fetchUsageData() {
-    // Allow tests to skip rate limits entirely
-    if (process.env.CLAUDE_HUD_SKIP_RATE_LIMITS === '1')
-        return null;
-    // Check cache first
-    const cached = readCache();
-    if (cached)
-        return cached;
-    const token = getOAuthToken();
-    if (!token)
-        return null;
+function isOnCooldown() {
     try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+        if (!fs.existsSync(COOLDOWN_FILE))
+            return false;
+        const stat = fs.statSync(COOLDOWN_FILE);
+        return (Date.now() - stat.mtimeMs) < COOLDOWN_MS;
+    }
+    catch {
+        return false;
+    }
+}
+function setCooldown() {
+    try {
+        if (!fs.existsSync(CACHE_DIR)) {
+            fs.mkdirSync(CACHE_DIR, { recursive: true });
+        }
+        fs.writeFileSync(COOLDOWN_FILE, '');
+    }
+    catch {
+        // Non-critical
+    }
+}
+async function fetchFromApi(token) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'anthropic-beta': 'oauth-2025-04-20',
+            'User-Agent': 'claude-hud/1.0',
+        },
+        signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (response.status === 429) {
+        // Retry once immediately (API returns retry-after: 0)
+        const retry = await fetch('https://api.anthropic.com/api/oauth/usage', {
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -104,21 +130,16 @@ export async function fetchUsageData() {
                 'anthropic-beta': 'oauth-2025-04-20',
                 'User-Agent': 'claude-hud/1.0',
             },
-            signal: controller.signal,
         });
-        clearTimeout(timeout);
-        if (!response.ok)
+        if (!retry.ok)
             return null;
-        const data = (await response.json());
-        if (data?.five_hour) {
-            writeCache(data);
-            return data;
-        }
+        return (await retry.json());
     }
-    catch {
-        // Network error, timeout, etc.
-    }
-    // Fall back to stale cache if fetch failed
+    if (!response.ok)
+        return null;
+    return (await response.json());
+}
+function readStaleCache() {
     try {
         if (fs.existsSync(CACHE_FILE)) {
             const content = fs.readFileSync(CACHE_FILE, 'utf8');
@@ -129,5 +150,34 @@ export async function fetchUsageData() {
         // Nothing available
     }
     return null;
+}
+export async function fetchUsageData() {
+    // Allow tests to skip rate limits entirely
+    if (process.env.CLAUDE_HUD_SKIP_RATE_LIMITS === '1')
+        return null;
+    // Check cache first
+    const cached = readCache();
+    if (cached)
+        return cached;
+    // Don't hammer the API if it recently failed
+    if (isOnCooldown())
+        return readStaleCache();
+    const token = getOAuthToken();
+    if (!token)
+        return null;
+    try {
+        const data = await fetchFromApi(token);
+        if (data?.five_hour) {
+            writeCache(data);
+            return data;
+        }
+    }
+    catch {
+        // Network error, timeout, etc.
+    }
+    // Mark cooldown so we don't retry for 30s
+    setCooldown();
+    // Fall back to stale cache
+    return readStaleCache();
 }
 //# sourceMappingURL=rate-limits.js.map
