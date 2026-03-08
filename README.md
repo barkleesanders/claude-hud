@@ -17,7 +17,7 @@ Context health · Tool activity · Agent tracking · Rate limits · Git status
 ---
 
 <div align="center">
-<img src="assets/demo.gif" alt="claude-hud demo" width="900">
+<img src="assets/screenshot.png" alt="claude-hud demo" width="900">
 </div>
 
 ---
