@@ -30,9 +30,10 @@ Context health · Tool activity · Agent tracking · Rate limits · Git status
 ◐ Explore [haiku]: Finding auth patterns (1m 32s)
 ▸ Fix authentication token refresh (2/5)
 
-current ●●○○○○○○○○  21% ⟳ 3:00pm
-weekly  ●●●●●○○○○○  52% ⟳ mar 12, 8:00pm
-extra   ○○○○○○○○○○ $0.00/$50.00
+current   ●●○○○○○○○○  21% ⟳ 3:00pm
+weekly    ●●●●●○○○○○  52% ⟳ mar 12, 8:00pm
+sonnet 7d ○○○○○○○○○○   0% ⟳ mar 12, 8:00pm
+extra     ○○○○○○○○○○ $0.00/$50.00
 ```
 
 | Line | What | Why |
@@ -100,12 +101,14 @@ Indicates whether extended thinking is enabled.
 Fetches your Anthropic API usage via OAuth and displays:
 
 - **Current** — 5-hour rolling window with reset time
-- **Weekly** — 7-day window with reset time
+- **Weekly** — 7-day all-models window with reset time
+- **Opus 7d** — Opus-specific weekly window (when present)
+- **Sonnet 7d** — Sonnet-specific weekly window (when present)
 - **Extra** — Overage credits used vs monthly limit
 
-Color-coded progress bars: green → orange → yellow → red as usage increases.
+Color-coded progress bars: green at low usage, through orange and yellow, to red above 90%.
 
-Cached for 60 seconds to avoid API spam. Token resolved from macOS Keychain, `~/.claude/.credentials.json`, or `CLAUDE_CODE_OAUTH_TOKEN` env var.
+Cached for 5 minutes. Uses `claude-code/*` User-Agent to avoid 429 rate-limit errors during active sessions (learned from [CodexBar](https://github.com/steipete/CodexBar)). Token resolved from macOS Keychain, `~/.claude/.credentials.json`, or `CLAUDE_CODE_OAUTH_TOKEN` env var.
 
 ### Tool Activity
 

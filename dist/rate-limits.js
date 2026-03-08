@@ -6,7 +6,38 @@ const CACHE_DIR = '/tmp/claude';
 const CACHE_FILE = path.join(CACHE_DIR, 'statusline-usage-cache.json');
 const COOLDOWN_FILE = path.join(CACHE_DIR, 'statusline-usage-cooldown');
 const CACHE_MAX_AGE_MS = 300_000; // 5 minutes — rate limits change slowly
-const COOLDOWN_MS = 30_000; // 30s backoff after API failure
+const COOLDOWN_MS = 10_000; // 10s backoff after API failure (reduced from 30s)
+const BETA_HEADER = 'oauth-2025-04-20';
+/**
+ * Detect the installed Claude Code version to use as User-Agent.
+ * CodexBar does the same thing (ClaudeOAuthUsageFetcher.swift:92-98) -
+ * the Anthropic API allows requests with "claude-code/*" User-Agent
+ * even during active sessions, while other user agents get 429.
+ */
+function getClaudeCodeVersion() {
+    try {
+        const output = execSync('claude --version 2>/dev/null', {
+            encoding: 'utf8',
+            timeout: 3000,
+        }).trim();
+        // Output is like "2.1.71 (Claude Code)" — extract the version number
+        const match = output.match(/^(\d+\.\d+\.\d+)/);
+        if (match)
+            return match[1];
+    }
+    catch {
+        // claude not installed or not on PATH
+    }
+    return '2.1.0'; // Fallback version
+}
+// Cache the detected version for the process lifetime
+let _cachedClaudeVersion = null;
+function getUserAgent() {
+    if (!_cachedClaudeVersion) {
+        _cachedClaudeVersion = getClaudeCodeVersion();
+    }
+    return `claude-code/${_cachedClaudeVersion}`;
+}
 function getOAuthToken() {
     // 1. Environment variable
     const envToken = process.env.CLAUDE_CODE_OAUTH_TOKEN;
@@ -106,30 +137,31 @@ function setCooldown() {
         // Non-critical
     }
 }
+function makeHeaders(token) {
+    return {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'anthropic-beta': BETA_HEADER,
+        'User-Agent': getUserAgent(),
+    };
+}
 async function fetchFromApi(token) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
+    const headers = makeHeaders(token);
     const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'anthropic-beta': 'oauth-2025-04-20',
-            'User-Agent': 'claude-hud/1.0',
-        },
+        headers,
         signal: controller.signal,
     });
     clearTimeout(timeout);
     if (response.status === 429) {
-        // Retry once immediately (API returns retry-after: 0)
+        // Respect retry-after header if present
+        const retryAfter = response.headers.get('retry-after');
+        const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : 500;
+        await new Promise(resolve => setTimeout(resolve, delayMs));
         const retry = await fetch('https://api.anthropic.com/api/oauth/usage', {
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                'anthropic-beta': 'oauth-2025-04-20',
-                'User-Agent': 'claude-hud/1.0',
-            },
+            headers,
         });
         if (!retry.ok)
             return null;
@@ -175,7 +207,7 @@ export async function fetchUsageData() {
     catch {
         // Network error, timeout, etc.
     }
-    // Mark cooldown so we don't retry for 30s
+    // Mark cooldown so we don't retry for 10s
     setCooldown();
     // Fall back to stale cache
     return readStaleCache();

@@ -1,4 +1,4 @@
-import type { RenderContext } from '../types.js';
+import type { RenderContext, RateLimitWindow } from '../types.js';
 import { dim, RESET } from './colors.js';
 
 const WHITE = '\x1b[38;2;220;220;220m';
@@ -52,6 +52,27 @@ function formatResetTime(isoStr?: string, style: 'time' | 'datetime' | 'date' = 
   }
 }
 
+function renderWindow(
+  label: string,
+  window: RateLimitWindow,
+  resetStyle: 'time' | 'datetime' | 'date',
+  padLen: number,
+  barWidth: number,
+): string {
+  const pct = Math.round(window.utilization ?? 0);
+  const reset = formatResetTime(window.resets_at, resetStyle);
+  const bar = buildBar(pct, barWidth);
+  const color = colorForPct(pct);
+  const pctFmt = pct.toString().padStart(3);
+  const paddedLabel = label.padEnd(padLen);
+
+  let line = `${WHITE}${paddedLabel}${RESET} ${bar} ${color}${pctFmt}%${RESET}`;
+  if (reset) {
+    line += ` ${dim('\u27F3')} ${WHITE}${reset}${RESET}`;
+  }
+  return line;
+}
+
 export function renderRateLimitsLine(ctx: RenderContext): string | null {
   const { usageData } = ctx;
   if (!usageData) return null;
@@ -59,31 +80,25 @@ export function renderRateLimitsLine(ctx: RenderContext): string | null {
   const lines: string[] = [];
   const barWidth = 10;
 
-  // 5-hour (current) window
-  const fiveHourPct = Math.round(usageData.five_hour.utilization ?? 0);
-  const fiveHourReset = formatResetTime(usageData.five_hour.resets_at, 'time');
-  const fiveHourBar = buildBar(fiveHourPct, barWidth);
-  const fiveHourColor = colorForPct(fiveHourPct);
-  const fiveHourPctFmt = fiveHourPct.toString().padStart(3);
+  // Determine the longest label for alignment
+  const labels: string[] = ['current', 'weekly'];
+  if (usageData.seven_day_opus?.utilization != null) labels.push('opus 7d');
+  if (usageData.seven_day_sonnet?.utilization != null) labels.push('sonnet 7d');
+  const padLen = Math.max(...labels.map(l => l.length));
 
-  let currentLine = `${WHITE}current${RESET} ${fiveHourBar} ${fiveHourColor}${fiveHourPctFmt}%${RESET}`;
-  if (fiveHourReset) {
-    currentLine += ` ${dim('⟳')} ${WHITE}${fiveHourReset}${RESET}`;
-  }
-  lines.push(currentLine);
+  // 5-hour (current) window
+  lines.push(renderWindow('current', usageData.five_hour, 'time', padLen, barWidth));
 
   // 7-day (weekly) window
-  const sevenDayPct = Math.round(usageData.seven_day.utilization ?? 0);
-  const sevenDayReset = formatResetTime(usageData.seven_day.resets_at, 'datetime');
-  const sevenDayBar = buildBar(sevenDayPct, barWidth);
-  const sevenDayColor = colorForPct(sevenDayPct);
-  const sevenDayPctFmt = sevenDayPct.toString().padStart(3);
+  lines.push(renderWindow('weekly', usageData.seven_day, 'datetime', padLen, barWidth));
 
-  let weeklyLine = `${WHITE}weekly${RESET}  ${sevenDayBar} ${sevenDayColor}${sevenDayPctFmt}%${RESET}`;
-  if (sevenDayReset) {
-    weeklyLine += ` ${dim('⟳')} ${WHITE}${sevenDayReset}${RESET}`;
+  // Model-specific weekly windows (like CodexBar shows)
+  if (usageData.seven_day_opus?.utilization != null) {
+    lines.push(renderWindow('opus 7d', usageData.seven_day_opus, 'datetime', padLen, barWidth));
   }
-  lines.push(weeklyLine);
+  if (usageData.seven_day_sonnet?.utilization != null) {
+    lines.push(renderWindow('sonnet 7d', usageData.seven_day_sonnet, 'datetime', padLen, barWidth));
+  }
 
   // Extra usage (if enabled)
   const extra = usageData.extra_usage;
@@ -93,8 +108,9 @@ export function renderRateLimitsLine(ctx: RenderContext): string | null {
     const extraLimit = (extra.monthly_limit / 100).toFixed(2);
     const extraBar = buildBar(extraPct, barWidth);
     const extraColor = colorForPct(extraPct);
+    const paddedLabel = 'extra'.padEnd(padLen);
 
-    lines.push(`${WHITE}extra${RESET}   ${extraBar} ${extraColor}$${extraUsed}${dim('/')}${RESET}${WHITE}$${extraLimit}${RESET}`);
+    lines.push(`${WHITE}${paddedLabel}${RESET} ${extraBar} ${extraColor}$${extraUsed}${dim('/')}${RESET}${WHITE}$${extraLimit}${RESET}`);
   }
 
   return lines.join('\n');

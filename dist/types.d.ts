@@ -54,10 +54,16 @@ export interface ExtraUsage {
     utilization: number;
     used_credits: number;
     monthly_limit: number;
+    currency?: string;
 }
 export interface UsageData {
     five_hour: RateLimitWindow;
     seven_day: RateLimitWindow;
+    seven_day_opus?: RateLimitWindow;
+    seven_day_sonnet?: RateLimitWindow;
+    seven_day_oauth_apps?: RateLimitWindow;
+    seven_day_cowork?: RateLimitWindow;
+    iguana_necktie?: RateLimitWindow;
     extra_usage?: ExtraUsage;
 }
 export interface RenderContext {

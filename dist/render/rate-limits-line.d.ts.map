@@ -1,1 +1,1 @@
-{"version":3,"file":"rate-limits-line.d.ts","sourceRoot":"","sources":["../../src/render/rate-limits-line.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,aAAa,CAAC;AAsDjD,wBAAgB,oBAAoB,CAAC,GAAG,EAAE,aAAa,GAAG,MAAM,GAAG,IAAI,CA8CtE"}
+{"version":3,"file":"rate-limits-line.d.ts","sourceRoot":"","sources":["../../src/render/rate-limits-line.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAmB,MAAM,aAAa,CAAC;AA2ElE,wBAAgB,oBAAoB,CAAC,GAAG,EAAE,aAAa,GAAG,MAAM,GAAG,IAAI,CAyCtE"}
