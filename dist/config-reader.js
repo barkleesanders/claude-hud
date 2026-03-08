@@ -67,8 +67,11 @@ export async function countConfigs(cwd) {
     let rulesCount = 0;
     let mcpCount = 0;
     let hooksCount = 0;
-    const homeDir = os.homedir();
+    const homeDir = path.resolve(os.homedir());
     const claudeDir = path.join(homeDir, '.claude');
+    const resolvedCwd = cwd ? path.resolve(cwd) : null;
+    // Skip project scope if cwd is the home directory (would double-count)
+    const isHomeCwd = resolvedCwd === homeDir;
     // === USER SCOPE ===
     // ~/.claude/CLAUDE.md
     if (fs.existsSync(path.join(claudeDir, 'CLAUDE.md'))) {
@@ -84,35 +87,47 @@ export async function countConfigs(cwd) {
     const userClaudeJson = path.join(homeDir, '.claude.json');
     mcpCount += countMcpServersInFile(userClaudeJson, userSettings);
     // === PROJECT SCOPE ===
-    if (cwd) {
+    if (resolvedCwd && !isHomeCwd) {
         // {cwd}/CLAUDE.md
-        if (fs.existsSync(path.join(cwd, 'CLAUDE.md'))) {
+        if (fs.existsSync(path.join(resolvedCwd, 'CLAUDE.md'))) {
             claudeMdCount++;
         }
         // {cwd}/CLAUDE.local.md
-        if (fs.existsSync(path.join(cwd, 'CLAUDE.local.md'))) {
+        if (fs.existsSync(path.join(resolvedCwd, 'CLAUDE.local.md'))) {
             claudeMdCount++;
         }
         // {cwd}/.claude/CLAUDE.md (alternative location)
-        if (fs.existsSync(path.join(cwd, '.claude', 'CLAUDE.md'))) {
+        if (fs.existsSync(path.join(resolvedCwd, '.claude', 'CLAUDE.md'))) {
             claudeMdCount++;
         }
         // {cwd}/.claude/CLAUDE.local.md
-        if (fs.existsSync(path.join(cwd, '.claude', 'CLAUDE.local.md'))) {
+        if (fs.existsSync(path.join(resolvedCwd, '.claude', 'CLAUDE.local.md'))) {
             claudeMdCount++;
         }
         // {cwd}/.claude/rules/*.md (recursive)
-        rulesCount += countRulesInDir(path.join(cwd, '.claude', 'rules'));
+        rulesCount += countRulesInDir(path.join(resolvedCwd, '.claude', 'rules'));
         // {cwd}/.mcp.json (project MCP config)
-        mcpCount += countMcpServersInFile(path.join(cwd, '.mcp.json'));
+        mcpCount += countMcpServersInFile(path.join(resolvedCwd, '.mcp.json'));
         // {cwd}/.claude/settings.json (project settings)
-        const projectSettings = path.join(cwd, '.claude', 'settings.json');
+        const projectSettings = path.join(resolvedCwd, '.claude', 'settings.json');
         mcpCount += countMcpServersInFile(projectSettings);
         hooksCount += countHooksInFile(projectSettings);
         // {cwd}/.claude/settings.local.json (local project settings)
-        const localSettings = path.join(cwd, '.claude', 'settings.local.json');
+        const localSettings = path.join(resolvedCwd, '.claude', 'settings.local.json');
         mcpCount += countMcpServersInFile(localSettings);
         hooksCount += countHooksInFile(localSettings);
+    }
+    else if (resolvedCwd && isHomeCwd) {
+        // When cwd is $HOME, only count project-specific files that aren't
+        // already covered by user scope (e.g., ~/CLAUDE.md, ~/.mcp.json)
+        if (fs.existsSync(path.join(resolvedCwd, 'CLAUDE.md'))) {
+            claudeMdCount++;
+        }
+        if (fs.existsSync(path.join(resolvedCwd, 'CLAUDE.local.md'))) {
+            claudeMdCount++;
+        }
+        // ~/.mcp.json is project-scoped only, not counted in user scope
+        mcpCount += countMcpServersInFile(path.join(resolvedCwd, '.mcp.json'));
     }
     return { claudeMdCount, rulesCount, mcpCount, hooksCount };
 }
