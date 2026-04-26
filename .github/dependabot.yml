@@ -1,7 +1,46 @@
+# Dependabot config for claude-hud
+# Layer 2a of the auto-update pipeline.
+# Companion workflow: .github/workflows/dependabot-auto-merge.yml
+# VPS oversight: openclaw cron "Dependabot PR Watcher (claude-hud)"
 version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    labels:
+      - "dependencies"
+      - "javascript"
+    groups:
+      all-deps:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Los_Angeles"
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(actions)"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      all-actions:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
