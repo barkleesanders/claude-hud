@@ -5,6 +5,12 @@ import { renderTodosLine } from './todos-line.js';
 import { renderRateLimitsLine } from './rate-limits-line.js';
 import { RESET } from './colors.js';
 export function render(ctx) {
+    process.stdout.write(renderToString(ctx));
+}
+export function renderToString(ctx) {
+    return collectRenderLines(ctx).map(formatOutputLine).join('\n') + '\n';
+}
+function collectRenderLines(ctx) {
     const lines = [];
     const sessionLine = renderSessionLine(ctx);
     if (sessionLine) {
@@ -27,9 +33,9 @@ export function render(ctx) {
         lines.push('');
         lines.push(rateLimitsLine);
     }
-    for (const line of lines) {
-        const outputLine = `${RESET}${line.replace(/ /g, '\u00A0')}`;
-        console.log(outputLine);
-    }
+    return lines;
+}
+function formatOutputLine(line) {
+    return `${RESET}${line.replace(/ /g, '\u00A0')}`;
 }
 //# sourceMappingURL=index.js.map

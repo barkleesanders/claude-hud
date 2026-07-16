@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
 import { render } from './render/index.js';
@@ -14,6 +15,7 @@ export type MainDeps = {
     readThinkingEnabled: typeof readThinkingEnabled;
     render: typeof render;
     now: () => number;
+    args: string[];
     log: (...args: unknown[]) => void;
 };
 export declare function main(overrides?: Partial<MainDeps>): Promise<void>;

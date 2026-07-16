@@ -153,6 +153,19 @@ export async function countConfigs(cwd?: string): Promise<ConfigCounts> {
   return { claudeMdCount, rulesCount, mcpCount, hooksCount };
 }
 
+export async function countCodexConfigs(cwd?: string): Promise<ConfigCounts> {
+  const configPath = path.join(os.homedir(), '.codex', 'config.toml');
+  const hooksPath = path.join(os.homedir(), '.codex', 'hooks.json');
+  const content = readText(configPath);
+
+  return {
+    claudeMdCount: countAgentInstructionFiles(cwd),
+    rulesCount: countEnabledFeatureFlags(content),
+    mcpCount: countTomlTables(content, 'mcp_servers'),
+    hooksCount: countHooksJson(hooksPath),
+  };
+}
+
 export function readThinkingEnabled(): boolean {
   const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
   if (!fs.existsSync(settingsPath)) return false;
@@ -165,3 +178,62 @@ export function readThinkingEnabled(): boolean {
   }
 }
 
+function countAgentInstructionFiles(cwd?: string): number {
+  const seen = new Set<string>();
+  let current = path.resolve(cwd ?? process.cwd());
+
+  while (!seen.has(current)) {
+    seen.add(current);
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  let count = 0;
+  for (const dir of seen) {
+    if (fs.existsSync(path.join(dir, 'AGENTS.md'))) count++;
+  }
+  return count;
+}
+
+function countEnabledFeatureFlags(content: string): number {
+  const body = getTomlTableBody(content, 'features');
+  if (!body) return 0;
+  const matches = body.match(/^\s*[A-Za-z0-9_]+\s*=\s*true\s*$/gm);
+  return matches?.length ?? 0;
+}
+
+function countTomlTables(content: string, prefix: string): number {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^\\[${escaped}\\.[^\\]]+\\]`, 'gm');
+  return new Set(content.match(re) ?? []).size;
+}
+
+function countHooksJson(filePath: string): number {
+  if (!fs.existsSync(filePath)) return 0;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (Array.isArray(parsed)) return parsed.length;
+    if (parsed && typeof parsed === 'object') return Object.keys(parsed).length;
+  } catch {
+    // Ignore malformed local config.
+  }
+  return 0;
+}
+
+function getTomlTableBody(content: string, tableName: string): string {
+  const start = content.match(new RegExp(`^\\[${tableName}\\]\\s*$`, 'm'));
+  if (!start || start.index == null) return '';
+
+  const rest = content.slice(start.index + start[0].length);
+  const nextTable = rest.search(/^\[[^\]]+\]\s*$/m);
+  return nextTable === -1 ? rest : rest.slice(0, nextTable);
+}
+
+function readText(filePath: string): string {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return '';
+  }
+}

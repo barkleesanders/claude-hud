@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 export interface RateLimitWindow {
   utilization: number;
   resets_at?: string;
+  window_minutes?: number;
 }
 
 export interface ExtraUsage {

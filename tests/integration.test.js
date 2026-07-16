@@ -66,3 +66,24 @@ test('CLI prints initializing message on empty stdin', () => {
   const normalized = stripAnsi(result.stdout).replace(/\u00A0/g, ' ').trimEnd();
   assert.equal(normalized, '[claude-hud] Initializing...');
 });
+
+test('CLI renders Codex sessions with --codex', () => {
+  const fixturePath = fileURLToPath(new URL('./fixtures/codex-session.jsonl', import.meta.url));
+  const result = spawnSync('node', ['dist/index.js', '--codex', fixturePath], {
+    cwd: path.resolve(process.cwd()),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      CLAUDE_HUD_SKIP_RATE_LIMITS: '1',
+    },
+  });
+
+  assert.equal(result.status, 0, result.stderr || 'non-zero exit');
+  const normalized = stripAnsi(result.stdout).replace(/\u00A0/g, ' ');
+  assert.ok(normalized.includes('codex 0.128.0'));
+  assert.ok(normalized.includes('ExecCommand'));
+  assert.ok(normalized.includes('Render HUD'));
+  assert.ok(normalized.includes('5h current'));
+  assert.ok(normalized.includes('7d weekly'));
+  assert.ok(normalized.includes('credits'));
+});

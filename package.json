@@ -1,18 +1,26 @@
 {
   "name": "claude-hud",
   "version": "1.0.0",
-  "description": "Real-time heads-up display for Claude Code — context health, tool activity, agent tracking, rate limits, git status",
+  "description": "Real-time heads-up display for Claude Code and Codex — context health, tool activity, agent tracking, rate limits, git status",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "claude-hud": "dist/index.js",
+    "codex-hud": "dist/index.js",
+    "codex-hud-tmux": "dist/tmux.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "codex:watch": "node dist/index.js --codex --watch",
+    "codex:tmux": "node dist/tmux.js",
+    "codex:hud": "node dist/tmux.js --hud-only",
     "test": "npm run build && node --test",
     "test:coverage": "npm run build && c8 --reporter=text --reporter=lcov node --test",
     "test:update-snapshots": "UPDATE_SNAPSHOTS=1 npm test",
     "test:stdin": "echo '{\"model\":{\"display_name\":\"Opus 4.6\"},\"context_window\":{\"current_usage\":{\"input_tokens\":45000},\"context_window_size\":200000},\"cwd\":\".\"}'  | node dist/index.js"
   },
-  "keywords": ["claude-code", "statusline", "hud", "rate-limits", "git", "cli"],
+  "keywords": ["claude-code", "codex", "statusline", "hud", "rate-limits", "git", "cli"],
   "author": "Barklee Sanders",
   "contributors": [
     "Jarrod Watts <https://github.com/jarrodwatts>"

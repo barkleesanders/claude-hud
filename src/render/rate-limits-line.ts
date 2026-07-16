@@ -73,31 +73,53 @@ function renderWindow(
   return line;
 }
 
+function formatWindowDuration(minutes: number | undefined): string | null {
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes <= 0) return null;
+
+  if (minutes % 1440 === 0) return `${minutes / 1440}d`;
+  if (minutes % 60 === 0) return `${minutes / 60}h`;
+  return `${minutes}m`;
+}
+
+function labelWithWindow(baseLabel: string, window: RateLimitWindow, fallbackMinutes: number): string {
+  const duration = formatWindowDuration(window.window_minutes ?? fallbackMinutes);
+  return duration ? `${duration} ${baseLabel}` : baseLabel;
+}
+
 export function renderRateLimitsLine(ctx: RenderContext): string | null {
   const { usageData } = ctx;
   if (!usageData) return null;
 
   const lines: string[] = [];
   const barWidth = 10;
+  const currentLabel = labelWithWindow('current', usageData.five_hour, 300);
+  const weeklyLabel = labelWithWindow('weekly', usageData.seven_day, 10080);
+  const opusLabel = usageData.seven_day_opus
+    ? labelWithWindow('opus', usageData.seven_day_opus, 10080)
+    : 'opus';
+  const sonnetLabel = usageData.seven_day_sonnet
+    ? labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080)
+    : 'sonnet';
 
   // Determine the longest label for alignment
-  const labels: string[] = ['current', 'weekly'];
-  if (usageData.seven_day_opus?.utilization != null) labels.push('opus 7d');
-  if (usageData.seven_day_sonnet?.utilization != null) labels.push('sonnet 7d');
+  const labels: string[] = [currentLabel, weeklyLabel];
+  if (usageData.seven_day_opus?.utilization != null) labels.push(opusLabel);
+  if (usageData.seven_day_sonnet?.utilization != null) labels.push(sonnetLabel);
+  if (usageData.codex_credits) labels.push('credits');
   const padLen = Math.max(...labels.map(l => l.length));
 
   // 5-hour (current) window
-  lines.push(renderWindow('current', usageData.five_hour, 'time', padLen, barWidth));
+  lines.push(renderWindow(currentLabel, usageData.five_hour, 'time', padLen, barWidth));
 
   // 7-day (weekly) window
-  lines.push(renderWindow('weekly', usageData.seven_day, 'datetime', padLen, barWidth));
+  lines.push(renderWindow(weeklyLabel, usageData.seven_day, 'datetime', padLen, barWidth));
 
   // Model-specific weekly windows (like CodexBar shows)
   if (usageData.seven_day_opus?.utilization != null) {
-    lines.push(renderWindow('opus 7d', usageData.seven_day_opus, 'datetime', padLen, barWidth));
+    lines.push(renderWindow(opusLabel, usageData.seven_day_opus, 'datetime', padLen, barWidth));
   }
   if (usageData.seven_day_sonnet?.utilization != null) {
-    lines.push(renderWindow('sonnet 7d', usageData.seven_day_sonnet, 'datetime', padLen, barWidth));
+    lines.push(renderWindow(sonnetLabel, usageData.seven_day_sonnet, 'datetime', padLen, barWidth));
   }
 
   // Extra usage (if enabled)
@@ -111,6 +133,20 @@ export function renderRateLimitsLine(ctx: RenderContext): string | null {
     const paddedLabel = 'extra'.padEnd(padLen);
 
     lines.push(`${WHITE}${paddedLabel}${RESET} ${extraBar} ${extraColor}$${extraUsed}${dim('/')}${RESET}${WHITE}$${extraLimit}${RESET}`);
+  }
+
+  const credits = usageData.codex_credits;
+  if (credits) {
+    const paddedLabel = 'credits'.padEnd(padLen);
+    let value = 'none';
+    if (credits.unlimited) {
+      value = 'unlimited';
+    } else if (credits.has_credits && typeof credits.balance === 'number') {
+      value = credits.balance.toLocaleString();
+    } else if (credits.has_credits) {
+      value = 'enabled';
+    }
+    lines.push(`${WHITE}${paddedLabel}${RESET} ${WHITE}${value}${RESET}`);
   }
 
   return lines.join('\n');

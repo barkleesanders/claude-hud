@@ -1,12 +1,14 @@
+#!/usr/bin/env node
 import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
-import { render } from './render/index.js';
-import { countConfigs } from './config-reader.js';
+import { render, renderToString } from './render/index.js';
+import { countCodexConfigs, countConfigs } from './config-reader.js';
 import { fetchUsageData } from './rate-limits.js';
 import { getGitInfo } from './git-info.js';
 import { readThinkingEnabled } from './config-reader.js';
 import type { RenderContext } from './types.js';
 import { fileURLToPath } from 'node:url';
+import { findLatestCodexSession, parseCodexSession } from './codex.js';
 
 export type MainDeps = {
   readStdin: typeof readStdin;
@@ -17,6 +19,7 @@ export type MainDeps = {
   readThinkingEnabled: typeof readThinkingEnabled;
   render: typeof render;
   now: () => number;
+  args: string[];
   log: (...args: unknown[]) => void;
 };
 
@@ -30,11 +33,18 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
     readThinkingEnabled,
     render,
     now: () => Date.now(),
+    args: process.argv.slice(2),
     log: console.log,
     ...overrides,
   };
 
   try {
+    const codexArgs = parseCodexArgs(deps.args);
+    if (codexArgs.enabled) {
+      await runCodexHud(deps, codexArgs);
+      return;
+    }
+
     const stdin = await deps.readStdin();
 
     if (!stdin) {
@@ -72,6 +82,105 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
   } catch (error) {
     deps.log('[claude-hud] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
+}
+
+interface CodexArgs {
+  enabled: boolean;
+  watch: boolean;
+  sessionPath?: string;
+}
+
+function parseCodexArgs(args: string[]): CodexArgs {
+  const enabledByEnv = process.env.CODEX_HUD_MODE === 'codex';
+  const result: CodexArgs = {
+    enabled: enabledByEnv,
+    watch: args.includes('--watch'),
+    sessionPath: process.env.CODEX_HUD_SESSION,
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--codex') {
+      result.enabled = true;
+      const next = args[i + 1];
+      if (next && !next.startsWith('--')) {
+        result.sessionPath = next;
+        i++;
+      }
+    } else if (arg.startsWith('--codex=')) {
+      result.enabled = true;
+      result.sessionPath = arg.slice('--codex='.length);
+    }
+  }
+
+  return result;
+}
+
+async function runCodexHud(deps: MainDeps, args: CodexArgs): Promise<void> {
+  const buildOutput = async (): Promise<string> => {
+    const sessionPath = args.sessionPath ?? findLatestCodexSession();
+    if (!sessionPath) {
+      return '[claude-hud] No Codex session found.\n';
+    }
+
+    const snapshot = await parseCodexSession(sessionPath);
+    const { claudeMdCount, rulesCount, mcpCount, hooksCount } = await countCodexConfigs(snapshot.stdin.cwd);
+
+    const ctx: RenderContext = {
+      stdin: snapshot.stdin,
+      transcript: snapshot.transcript,
+      claudeMdCount,
+      rulesCount,
+      mcpCount,
+      hooksCount,
+      sessionDuration: formatSessionDuration(snapshot.transcript.sessionStart, deps.now),
+      gitInfo: deps.getGitInfo(snapshot.stdin.cwd),
+      thinkingEnabled: false,
+      usageData: snapshot.usageData,
+    };
+
+    return renderToString(ctx);
+  };
+
+  if (!args.watch) {
+    process.stdout.write(await buildOutput());
+    return;
+  }
+
+  let previous = '';
+  const refreshMs = getRefreshMs();
+  process.stdout.write('\x1b[?25l');
+
+  const restoreCursor = (): void => {
+    process.stdout.write('\x1b[?25h');
+  };
+  process.once('SIGINT', () => {
+    restoreCursor();
+    process.exit(130);
+  });
+  process.once('SIGTERM', () => {
+    restoreCursor();
+    process.exit(143);
+  });
+
+  for (;;) {
+    const output = await buildOutput();
+    if (output !== previous) {
+      process.stdout.write('\x1b[H');
+      process.stdout.write(output);
+      process.stdout.write('\x1b[J');
+      previous = output;
+    }
+    await new Promise((resolve) => setTimeout(resolve, refreshMs));
+  }
+}
+
+function getRefreshMs(): number {
+  const parsed = Number.parseInt(process.env.CODEX_HUD_REFRESH_MS ?? '', 10);
+  if (Number.isFinite(parsed) && parsed >= 250) {
+    return parsed;
+  }
+  return 1000;
 }
 
 export function formatSessionDuration(sessionStart?: Date, now: () => number = () => Date.now()): string {

@@ -1,6 +1,7 @@
 export interface RateLimitWindow {
     utilization: number;
     resets_at?: string;
+    window_minutes?: number;
 }
 export interface ExtraUsage {
     is_enabled: boolean;

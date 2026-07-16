@@ -4,6 +4,8 @@ import { renderSessionLine } from '../dist/render/session-line.js';
 import { renderToolsLine } from '../dist/render/tools-line.js';
 import { renderAgentsLine } from '../dist/render/agents-line.js';
 import { renderTodosLine } from '../dist/render/todos-line.js';
+import { renderRateLimitsLine } from '../dist/render/rate-limits-line.js';
+import { renderToString } from '../dist/render/index.js';
 import { getContextColor } from '../dist/render/colors.js';
 
 function baseContext() {
@@ -91,6 +93,28 @@ test('renderSessionLine includes config counts when present', () => {
   assert.ok(line.includes('rules'));
   assert.ok(line.includes('MCPs'));
   assert.ok(line.includes('hooks'));
+});
+
+test('renderToString emits stable complete output for watch mode', () => {
+  const ctx = baseContext();
+  const output = renderToString(ctx);
+  assert.ok(output.includes('[Opus]'));
+  assert.ok(output.endsWith('\n'));
+});
+
+test('renderRateLimitsLine shows Codex primary, secondary, and credits', () => {
+  const ctx = baseContext();
+  ctx.usageData = {
+    five_hour: { utilization: 10, resets_at: '2026-05-07T10:00:00Z' },
+    seven_day: { utilization: 20, resets_at: '2026-05-11T10:00:00Z' },
+    codex_credits: { has_credits: false, unlimited: false, balance: null },
+  };
+
+  const line = renderRateLimitsLine(ctx);
+  assert.ok(line?.includes('5h current'));
+  assert.ok(line?.includes('7d weekly'));
+  assert.ok(line?.includes('credits'));
+  assert.ok(line?.includes('none'));
 });
 
 test('renderToolsLine renders running and completed tools', () => {

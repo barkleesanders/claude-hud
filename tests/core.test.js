@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseTranscript } from '../dist/transcript.js';
+import { parseCodexSession } from '../dist/codex.js';
+import { buildCodexCommand, buildHudCommand, parseArgs } from '../dist/tmux.js';
 import { countConfigs } from '../dist/config-reader.js';
 import { getContextPercent, getModelName } from '../dist/stdin.js';
 import * as fs from 'node:fs';
@@ -67,6 +69,37 @@ test('parseTranscript returns empty result when file is missing', async () => {
   assert.equal(result.tools.length, 0);
   assert.equal(result.agents.length, 0);
   assert.equal(result.todos.length, 0);
+});
+
+test('parseCodexSession maps Codex JSONL into HUD data', async () => {
+  const fixturePath = fileURLToPath(new URL('./fixtures/codex-session.jsonl', import.meta.url));
+  const result = await parseCodexSession(fixturePath);
+
+  assert.equal(result.stdin.source, 'codex');
+  assert.equal(result.stdin.cli_version, '0.128.0');
+  assert.equal(result.stdin.context_window?.context_window_size, 2000);
+  assert.equal(result.stdin.context_window?.current_usage?.input_tokens, 750);
+  assert.equal(result.transcript.tools[0].name, 'ExecCommand');
+  assert.equal(result.transcript.tools[0].status, 'completed');
+  assert.equal(result.transcript.todos[1].status, 'in_progress');
+  assert.equal(result.usageData?.five_hour.utilization, 10);
+  assert.equal(result.usageData?.five_hour.window_minutes, 300);
+  assert.equal(result.usageData?.seven_day.window_minutes, 10080);
+  assert.equal(result.usageData?.codex_credits?.has_credits, false);
+  assert.equal(result.usageData?.plan_type, 'prolite');
+});
+
+test('tmux launcher builds Codex main pane and HUD pane commands', () => {
+  const parsed = parseArgs(['--no-attach', '--tmux-session', 'hud-test', '--', '-m', 'gpt-5.5'], {
+    CODEX_HUD_REAL_CODEX: '/tmp/codex real',
+  });
+
+  assert.equal(parsed.attach, false);
+  assert.equal(parsed.sessionName, 'hud-test');
+  assert.deepEqual(parsed.codexArgs, ['-m', 'gpt-5.5']);
+  assert.ok(buildHudCommand('/tmp/session.jsonl').includes('--codex'));
+  assert.ok(buildCodexCommand(parsed.realCodex, parsed.codexArgs).includes('CODEX_HUD_ACTIVE=1'));
+  assert.ok(buildCodexCommand(parsed.realCodex, parsed.codexArgs).includes("'/tmp/codex real'"));
 });
 
 test('parseTranscript tolerates malformed lines', async () => {

@@ -20,11 +20,13 @@ export function renderSessionLine(ctx: RenderContext): string {
   }
 
   if (ctx.claudeMdCount > 0) {
-    parts.push(dim(`${ctx.claudeMdCount} CLAUDE.md`));
+    const label = ctx.stdin.source === 'codex' ? 'AGENTS.md' : 'CLAUDE.md';
+    parts.push(dim(`${ctx.claudeMdCount} ${label}`));
   }
 
   if (ctx.rulesCount > 0) {
-    parts.push(dim(`${ctx.rulesCount} rules`));
+    const label = ctx.stdin.source === 'codex' ? 'features' : 'rules';
+    parts.push(dim(`${ctx.rulesCount} ${label}`));
   }
 
   if (ctx.mcpCount > 0) {
@@ -39,11 +41,16 @@ export function renderSessionLine(ctx: RenderContext): string {
     parts.push(dim(`⏱️  ${ctx.sessionDuration}`));
   }
 
-  // Thinking mode indicator
-  if (ctx.thinkingEnabled) {
-    parts.push(magenta('◐ thinking'));
+  if (ctx.stdin.source === 'codex') {
+    if (ctx.stdin.cli_version) {
+      parts.push(dim(`codex ${ctx.stdin.cli_version}`));
+    }
   } else {
-    parts.push(dim('◑ thinking'));
+    if (ctx.thinkingEnabled) {
+      parts.push(magenta('◐ thinking'));
+    } else {
+      parts.push(dim('◑ thinking'));
+    }
   }
 
   let line = parts.join(' | ');

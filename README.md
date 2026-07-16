@@ -4,7 +4,7 @@
 
 # claude-hud
 
-**Real-time heads-up display for Claude Code**
+**Real-time heads-up display for Claude Code and Codex**
 
 Context health · Tool activity · Agent tracking · Rate limits · Git status
 
@@ -30,10 +30,10 @@ Context health · Tool activity · Agent tracking · Rate limits · Git status
 ◐ Explore [haiku]: Finding auth patterns (1m 32s)
 ▸ Fix authentication token refresh (2/5)
 
-current   ●●○○○○○○○○  21% ⟳ 3:00pm
-weekly    ●●●●●○○○○○  52% ⟳ mar 12, 8:00pm
-sonnet 7d ○○○○○○○○○○   0% ⟳ mar 12, 8:00pm
-extra     ○○○○○○○○○○ $0.00/$50.00
+5h current ●●○○○○○○○○  21% ⟳ 3:00pm
+7d weekly  ●●●●●○○○○○  52% ⟳ mar 12, 8:00pm
+7d sonnet  ○○○○○○○○○○   0% ⟳ mar 12, 8:00pm
+extra      ○○○○○○○○○○ $0.00/$50.00
 ```
 
 | Line | What | Why |
@@ -52,7 +52,7 @@ cd claude-hud
 npm ci && npm run build
 ```
 
-Add to your `~/.claude/settings.json`:
+For Claude Code, add to your `~/.claude/settings.json`:
 
 ```json
 {
@@ -64,6 +64,25 @@ Add to your `~/.claude/settings.json`:
 ```
 
 Replace `/path/to/claude-hud` with the actual path.
+
+For Codex, launch it through the tmux wrapper because Codex does not expose Claude Code's native `statusLine` hook. The wrapper starts Codex in the main tmux pane and keeps this HUD in a 10-line pane directly underneath:
+
+```bash
+npm run build
+npm run codex:tmux
+```
+
+To show only the HUD pane for an already-running Codex session:
+
+```bash
+npm run codex:hud
+```
+
+To render the latest Codex session once:
+
+```bash
+node dist/index.js --codex
+```
 
 ## Features
 
@@ -110,6 +129,14 @@ Color-coded progress bars: green at low usage, through orange and yellow, to red
 
 Cached for 5 minutes. Uses `claude-code/*` User-Agent to avoid 429 rate-limit errors during active sessions (learned from [CodexBar](https://github.com/steipete/CodexBar)). Token resolved from macOS Keychain, `~/.claude/.credentials.json`, or `CLAUDE_CODE_OAUTH_TOKEN` env var.
 
+For Codex sessions, the HUD reads the rate-limit events Codex writes to `~/.codex/sessions`:
+
+- **5h current** — Codex `primary`; the prefix comes from Codex `window_minutes` when reported.
+- **7d weekly** — Codex `secondary`; the prefix comes from Codex `window_minutes` when reported.
+- **credits** — Codex overage/credit state when Codex reports it (`none`, `enabled`, `unlimited`, or the reported balance).
+
+The Codex watch pane redraws only when the rendered HUD changes, so it avoids the full-pane clear that causes visible flicker.
+
 ### Tool Activity
 
 Tracks tools from the session transcript:
@@ -141,10 +168,11 @@ Shows subagent type, model, description, and elapsed time:
 
 ```
 Claude Code → stdin JSON → claude-hud → stdout → terminal
-           ↘ transcript JSONL → tools, agents, todos
-           ↘ OAuth API → rate limits (cached 60s)
+Codex       → ~/.codex/sessions JSONL → claude-hud → tmux pane
+           ↘ transcript/session JSONL → tools, agents, todos
+           ↘ OAuth/Codex rate-limit events → rate limits
            ↘ git CLI → branch, dirty status
-           ↘ settings.json → thinking mode, configs
+           ↘ settings/config files → thinking mode, configs
 ```
 
 ### Data Sources

@@ -7,6 +7,14 @@ import { renderRateLimitsLine } from './rate-limits-line.js';
 import { RESET } from './colors.js';
 
 export function render(ctx: RenderContext): void {
+  process.stdout.write(renderToString(ctx));
+}
+
+export function renderToString(ctx: RenderContext): string {
+  return collectRenderLines(ctx).map(formatOutputLine).join('\n') + '\n';
+}
+
+function collectRenderLines(ctx: RenderContext): string[] {
   const lines: string[] = [];
 
   const sessionLine = renderSessionLine(ctx);
@@ -35,8 +43,9 @@ export function render(ctx: RenderContext): void {
     lines.push(rateLimitsLine);
   }
 
-  for (const line of lines) {
-    const outputLine = `${RESET}${line.replace(/ /g, '\u00A0')}`;
-    console.log(outputLine);
-  }
+  return lines;
+}
+
+function formatOutputLine(line: string): string {
+  return `${RESET}${line.replace(/ /g, '\u00A0')}`;
 }

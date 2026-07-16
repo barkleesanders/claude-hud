@@ -1,6 +1,8 @@
 export interface StdinData {
+  source?: 'claude' | 'codex';
   transcript_path?: string;
   cwd?: string;
+  cli_version?: string;
   model?: {
     id?: string;
     display_name?: string;
@@ -54,6 +56,7 @@ export interface GitInfo {
 export interface RateLimitWindow {
   utilization: number;
   resets_at?: string;
+  window_minutes?: number;
 }
 
 export interface ExtraUsage {
@@ -62,6 +65,12 @@ export interface ExtraUsage {
   used_credits: number;
   monthly_limit: number;
   currency?: string;
+}
+
+export interface CodexCredits {
+  has_credits: boolean;
+  unlimited: boolean;
+  balance: number | null;
 }
 
 export interface UsageData {
@@ -73,6 +82,10 @@ export interface UsageData {
   seven_day_cowork?: RateLimitWindow;
   iguana_necktie?: RateLimitWindow;
   extra_usage?: ExtraUsage;
+  codex_credits?: CodexCredits;
+  limit_name?: string | null;
+  plan_type?: string | null;
+  rate_limit_reached_type?: string | null;
 }
 
 export interface RenderContext {
