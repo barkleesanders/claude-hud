@@ -3,7 +3,7 @@ import { renderSessionLine } from './session-line.js';
 import { renderToolsLine } from './tools-line.js';
 import { renderAgentsLine } from './agents-line.js';
 import { renderTodosLine } from './todos-line.js';
-import { renderRateLimitsLine } from './rate-limits-line.js';
+import { renderPoolLines, renderRateLimitsLine } from './rate-limits-line.js';
 import { RESET } from './colors.js';
 
 export function render(ctx: RenderContext): void {
@@ -41,6 +41,12 @@ function collectRenderLines(ctx: RenderContext): string[] {
   if (rateLimitsLine) {
     lines.push('');
     lines.push(rateLimitsLine);
+  }
+
+  const poolLines = renderPoolLines(ctx);
+  if (poolLines) {
+    if (!rateLimitsLine) lines.push('');
+    lines.push(poolLines);
   }
 
   return lines;

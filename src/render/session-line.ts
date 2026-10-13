@@ -19,8 +19,16 @@ export function renderSessionLine(ctx: RenderContext): string {
     parts.push(`${green(ctx.gitInfo.branch)}${dirtyMark}`);
   }
 
+  const cost = ctx.stdin.cost?.total_cost_usd;
+  if (typeof cost === 'number' && cost >= 0.005) {
+    parts.push(dim(`$${cost.toFixed(2)}`));
+  }
+  if (ctx.stdin.grok_usage?.tier) {
+    parts.push(dim(ctx.stdin.grok_usage.tier));
+  }
+
   if (ctx.claudeMdCount > 0) {
-    const label = ctx.stdin.source === 'codex' ? 'AGENTS.md' : 'CLAUDE.md';
+    const label = ctx.stdin.source === 'codex' || ctx.stdin.source === 'grok' ? 'AGENTS.md' : 'CLAUDE.md';
     parts.push(dim(`${ctx.claudeMdCount} ${label}`));
   }
 
@@ -45,7 +53,7 @@ export function renderSessionLine(ctx: RenderContext): string {
     if (ctx.stdin.cli_version) {
       parts.push(dim(`codex ${ctx.stdin.cli_version}`));
     }
-  } else {
+  } else if (ctx.stdin.source !== 'grok') {
     if (ctx.thinkingEnabled) {
       parts.push(magenta('◐ thinking'));
     } else {

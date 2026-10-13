@@ -4,9 +4,27 @@ import { parseTranscript } from './transcript.js';
 import { render, renderToString } from './render/index.js';
 import { countCodexConfigs, countConfigs } from './config-reader.js';
 import { fetchUsageData } from './rate-limits.js';
+import { getPoolUsage } from './pool-usage.js';
 import { getGitInfo } from './git-info.js';
 import { readThinkingEnabled } from './config-reader.js';
-import type { RenderContext } from './types.js';
+import type { RenderContext, TranscriptData, UsageData } from './types.js';
+import type { StdinData } from './types.js';
+
+function usageDataFromGrok(stdin: StdinData): UsageData | null {
+  const grok = stdin.grok_usage;
+  if (!grok) return null;
+  const data: UsageData = {
+    plan_type: grok.tier ?? null,
+  };
+  if (grok.weekly) data.seven_day = grok.weekly;
+  if (grok.products?.length) data.windows = grok.products;
+  if (grok.extra_usage) data.extra_usage = grok.extra_usage;
+  if (grok.dollar_meters?.length) data.dollar_meters = grok.dollar_meters;
+  if (typeof grok.prepaid === 'number') {
+    data.codex_credits = { has_credits: true, unlimited: false, balance: grok.prepaid };
+  }
+  return data.seven_day || data.extra_usage || data.codex_credits || data.windows ? data : null;
+}
 import { fileURLToPath } from 'node:url';
 import { findLatestCodexSession, parseCodexSession } from './codex.js';
 
@@ -15,6 +33,7 @@ export type MainDeps = {
   parseTranscript: typeof parseTranscript;
   countConfigs: typeof countConfigs;
   fetchUsageData: typeof fetchUsageData;
+  getPoolUsage: typeof getPoolUsage;
   getGitInfo: typeof getGitInfo;
   readThinkingEnabled: typeof readThinkingEnabled;
   render: typeof render;
@@ -29,6 +48,7 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
     parseTranscript,
     countConfigs,
     fetchUsageData,
+    getPoolUsage,
     getGitInfo,
     readThinkingEnabled,
     render,
@@ -52,17 +72,26 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
       return;
     }
 
-    const transcriptPath = stdin.transcript_path ?? '';
-    const transcript = await deps.parseTranscript(transcriptPath);
+    const isGrok =
+      stdin.source === 'grok' ||
+      process.env.GROK_HUD === '1' ||
+      (stdin.model?.id ?? '').startsWith('grok');
 
-    const { claudeMdCount, rulesCount, mcpCount, hooksCount } = await deps.countConfigs(stdin.cwd);
+    const emptyTranscript: TranscriptData = { tools: [], agents: [], todos: [] };
+    const transcript = isGrok
+      ? emptyTranscript
+      : await deps.parseTranscript(stdin.transcript_path ?? '');
+
+    const { claudeMdCount, rulesCount, mcpCount, hooksCount } = isGrok
+      ? { claudeMdCount: 0, rulesCount: 0, mcpCount: 0, hooksCount: 0 }
+      : await deps.countConfigs(stdin.cwd);
 
     const sessionDuration = formatSessionDuration(transcript.sessionStart, deps.now);
 
     const [usageData, gitInfo, thinkingEnabled] = await Promise.all([
-      deps.fetchUsageData(),
+      isGrok ? Promise.resolve(usageDataFromGrok(stdin)) : deps.fetchUsageData(),
       Promise.resolve(deps.getGitInfo(stdin.cwd)),
-      Promise.resolve(deps.readThinkingEnabled()),
+      isGrok ? Promise.resolve(false) : Promise.resolve(deps.readThinkingEnabled()),
     ]);
 
     const ctx: RenderContext = {
@@ -76,6 +105,7 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
       gitInfo,
       thinkingEnabled,
       usageData,
+      poolUsage: isGrok ? null : deps.getPoolUsage(),
     };
 
     deps.render(ctx);
