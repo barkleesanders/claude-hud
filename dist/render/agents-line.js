@@ -1,10 +1,8 @@
-import { yellow, green, magenta, dim } from './colors.js';
+import { dim, green, magenta, yellow } from './colors.js';
 export function renderAgentsLine(ctx) {
     const { agents } = ctx.transcript;
     const runningAgents = agents.filter((a) => a.status === 'running');
-    const recentCompleted = agents
-        .filter((a) => a.status === 'completed')
-        .slice(-2);
+    const recentCompleted = agents.filter((a) => a.status === 'completed').slice(-2);
     const toShow = [...runningAgents, ...recentCompleted].slice(-3);
     if (toShow.length === 0) {
         return null;
@@ -26,7 +24,7 @@ function formatAgent(agent) {
 function truncateDesc(desc, maxLen = 40) {
     if (desc.length <= maxLen)
         return desc;
-    return desc.slice(0, maxLen - 3) + '...';
+    return `${desc.slice(0, maxLen - 3)}...`;
 }
 function formatElapsed(agent) {
     const now = Date.now();

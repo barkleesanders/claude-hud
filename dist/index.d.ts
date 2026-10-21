@@ -1,16 +1,17 @@
 #!/usr/bin/env node
+import { countConfigs, readThinkingEnabled } from './config-reader.js';
+import { getGitInfo } from './git-info.js';
+import { getPoolUsage } from './pool-usage.js';
+import { fetchUsageData } from './rate-limits.js';
+import { render } from './render/index.js';
 import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
-import { render } from './render/index.js';
-import { countConfigs } from './config-reader.js';
-import { fetchUsageData } from './rate-limits.js';
-import { getGitInfo } from './git-info.js';
-import { readThinkingEnabled } from './config-reader.js';
 export type MainDeps = {
     readStdin: typeof readStdin;
     parseTranscript: typeof parseTranscript;
     countConfigs: typeof countConfigs;
     fetchUsageData: typeof fetchUsageData;
+    getPoolUsage: typeof getPoolUsage;
     getGitInfo: typeof getGitInfo;
     readThinkingEnabled: typeof readThinkingEnabled;
     render: typeof render;

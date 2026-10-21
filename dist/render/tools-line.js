@@ -1,4 +1,4 @@
-import { yellow, green, cyan, dim } from './colors.js';
+import { cyan, dim, green, yellow } from './colors.js';
 export function renderToolsLine(ctx) {
     const { tools } = ctx.transcript;
     if (tools.length === 0) {
@@ -33,8 +33,8 @@ function truncatePath(path, maxLen = 20) {
     const parts = path.split('/');
     const filename = parts.pop() || path;
     if (filename.length >= maxLen) {
-        return filename.slice(0, maxLen - 3) + '...';
+        return `${filename.slice(0, maxLen - 3)}...`;
     }
-    return '.../' + filename;
+    return `.../${filename}`;
 }
 //# sourceMappingURL=tools-line.js.map

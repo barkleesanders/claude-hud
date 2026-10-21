@@ -1,5 +1,5 @@
 import type { RenderContext } from '../types.js';
-import { yellow, green, dim } from './colors.js';
+import { dim, green, yellow } from './colors.js';
 
 export function renderTodosLine(ctx: RenderContext): string | null {
   const { todos } = ctx.transcript;
@@ -27,5 +27,5 @@ export function renderTodosLine(ctx: RenderContext): string | null {
 
 function truncateContent(content: string, maxLen: number = 50): string {
   if (content.length <= maxLen) return content;
-  return content.slice(0, maxLen - 3) + '...';
+  return `${content.slice(0, maxLen - 3)}...`;
 }

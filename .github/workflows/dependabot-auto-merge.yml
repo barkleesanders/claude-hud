@@ -1,61 +1,33 @@
-name: Dependabot Auto-Merge
+name: Auto-merge Dependabot patches
 
-# Layer 2b of the dependabot pipeline.
-# - patch + minor (any deps): auto-approve + auto-merge after CI
-# - major bump: comment "needs human review", do NOT merge
-#
-# Security:
-# - pull_request_target runs against the BASE repo (no PR-supplied code)
-# - We only call dependabot/fetch-metadata (first-party) + gh CLI
-# - We never `npm install` / `npm run` here — that's CI's job
-# - Auto-merge waits for required checks; we don't bypass them
 on:
   pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  dependabot:
+  automerge:
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Fetch dependabot metadata
-        id: meta
-        uses: dependabot/fetch-metadata@v2
+      # Never check out or execute PR code in this privileged job.
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3 (Node 24)
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
 
-      - name: Auto-approve patch + minor updates
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr review --approve "$PR_URL" --body "Auto-approved: ${{ steps.meta.outputs.update-type }} for ${{ steps.meta.outputs.dependency-names }}"
-
-      - name: Enable auto-merge for patch + minor updates
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+      # Other updates require explicit review. fetch-metadata has no
+      # is-security-update output; do not infer it from labels or PR text.
+      # Actions review approval is disabled by repository policy.
+      - name: Enable auto-merge for patch updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
         run: gh pr merge --auto --squash "$PR_URL"
-
-      - name: Flag major updates for human review
-        if: steps.meta.outputs.update-type == 'version-update:semver-major'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-          DEP: ${{ steps.meta.outputs.dependency-names }}
-          PREV: ${{ steps.meta.outputs.previous-version }}
-          NEW: ${{ steps.meta.outputs.new-version }}
-        run: |
-          # Idempotency: don't re-comment if we already flagged this PR
-          if gh pr view "$PR_URL" --json comments --jq '.comments[].body' | grep -q '^MAJOR-BUMP-TRIAGE'; then
-            echo "Already flagged — skipping."
-            exit 0
-          fi
-          gh pr comment "$PR_URL" --body "MAJOR-BUMP-TRIAGE
-:warning: Major version bump for **${DEP}**: \`${PREV}\` → \`${NEW}\`.
-Auto-merge withheld pending human review.
-Check the changelog for breaking changes before approving."
+          GH_TOKEN: ${{ github.token }}

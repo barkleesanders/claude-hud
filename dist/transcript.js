@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as readline from 'readline';
+import * as fs from 'node:fs';
+import * as readline from 'node:readline';
 export async function parseTranscript(transcriptPath) {
     const result = {
         tools: [],
@@ -11,7 +11,7 @@ export async function parseTranscript(transcriptPath) {
     }
     const toolMap = new Map();
     const agentMap = new Map();
-    let latestTodos = [];
+    const latestTodos = [];
     try {
         const fileStream = fs.createReadStream(transcriptPath);
         const rl = readline.createInterface({
@@ -104,9 +104,10 @@ function extractTarget(toolName, input) {
             return input.pattern;
         case 'Grep':
             return input.pattern;
-        case 'Bash':
+        case 'Bash': {
             const cmd = input.command;
             return cmd?.slice(0, 30) + (cmd?.length > 30 ? '...' : '');
+        }
     }
     return undefined;
 }

@@ -1,20 +1,32 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { formatSessionDuration, main } from '../dist/index.js';
 
 test('formatSessionDuration returns empty string without session start', () => {
-  assert.equal(formatSessionDuration(undefined, () => 0), '');
+  assert.equal(
+    formatSessionDuration(undefined, () => 0),
+    '',
+  );
 });
 
 test('formatSessionDuration formats sub-minute and minute durations', () => {
   const start = new Date(0);
-  assert.equal(formatSessionDuration(start, () => 30 * 1000), '<1m');
-  assert.equal(formatSessionDuration(start, () => 5 * 60 * 1000), '5m');
+  assert.equal(
+    formatSessionDuration(start, () => 30 * 1000),
+    '<1m',
+  );
+  assert.equal(
+    formatSessionDuration(start, () => 5 * 60 * 1000),
+    '5m',
+  );
 });
 
 test('formatSessionDuration formats hour durations', () => {
   const start = new Date(0);
-  assert.equal(formatSessionDuration(start, () => 2 * 60 * 60 * 1000 + 5 * 60 * 1000), '2h 5m');
+  assert.equal(
+    formatSessionDuration(start, () => 2 * 60 * 60 * 1000 + 5 * 60 * 1000),
+    '2h 5m',
+  );
 });
 
 test('formatSessionDuration uses Date.now by default', () => {
@@ -92,7 +104,12 @@ test('main executes the happy path with default dependencies', async () => {
         model: { display_name: 'Opus' },
         context_window: { context_window_size: 100, current_usage: { input_tokens: 90 } },
       }),
-      parseTranscript: async () => ({ tools: [], agents: [], todos: [], sessionStart: new Date(0) }),
+      parseTranscript: async () => ({
+        tools: [],
+        agents: [],
+        todos: [],
+        sessionStart: new Date(0),
+      }),
       countConfigs: async () => ({ claudeMdCount: 0, rulesCount: 0, mcpCount: 0, hooksCount: 0 }),
       render: (ctx) => {
         renderedContext = ctx;

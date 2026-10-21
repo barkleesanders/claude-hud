@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as readline from 'readline';
-import type { TranscriptData, ToolEntry, AgentEntry, TodoItem } from './types.js';
+import * as fs from 'node:fs';
+import * as readline from 'node:readline';
+import type { AgentEntry, TodoItem, ToolEntry, TranscriptData } from './types.js';
 
 interface TranscriptLine {
   timestamp?: string;
@@ -31,7 +31,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
   const toolMap = new Map<string, ToolEntry>();
   const agentMap = new Map<string, AgentEntry>();
-  let latestTodos: TodoItem[] = [];
+  const latestTodos: TodoItem[] = [];
 
   try {
     const fileStream = fs.createReadStream(transcriptPath);
@@ -66,7 +66,7 @@ function processEntry(
   toolMap: Map<string, ToolEntry>,
   agentMap: Map<string, AgentEntry>,
   latestTodos: TodoItem[],
-  result: TranscriptData
+  result: TranscriptData,
 ): void {
   const timestamp = entry.timestamp ? new Date(entry.timestamp) : new Date();
 
@@ -137,9 +137,10 @@ function extractTarget(toolName: string, input?: Record<string, unknown>): strin
       return input.pattern as string;
     case 'Grep':
       return input.pattern as string;
-    case 'Bash':
+    case 'Bash': {
       const cmd = input.command as string;
       return cmd?.slice(0, 30) + (cmd?.length > 30 ? '...' : '');
+    }
   }
   return undefined;
 }

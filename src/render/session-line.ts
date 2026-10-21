@@ -1,6 +1,6 @@
-import type { RenderContext } from '../types.js';
 import { getContextPercent, getModelName } from '../stdin.js';
-import { coloredBar, cyan, dim, red, green, magenta, getContextColor, RESET } from './colors.js';
+import type { RenderContext } from '../types.js';
+import { coloredBar, cyan, dim, getContextColor, green, magenta, RESET, red } from './colors.js';
 
 const RED_RGB = '\x1b[38;2;255;85;85m';
 
@@ -19,8 +19,17 @@ export function renderSessionLine(ctx: RenderContext): string {
     parts.push(`${green(ctx.gitInfo.branch)}${dirtyMark}`);
   }
 
+  const cost = ctx.stdin.cost?.total_cost_usd;
+  if (typeof cost === 'number' && cost >= 0.005) {
+    parts.push(dim(`$${cost.toFixed(2)}`));
+  }
+  if (ctx.stdin.grok_usage?.tier) {
+    parts.push(dim(ctx.stdin.grok_usage.tier));
+  }
+
   if (ctx.claudeMdCount > 0) {
-    const label = ctx.stdin.source === 'codex' ? 'AGENTS.md' : 'CLAUDE.md';
+    const label =
+      ctx.stdin.source === 'codex' || ctx.stdin.source === 'grok' ? 'AGENTS.md' : 'CLAUDE.md';
     parts.push(dim(`${ctx.claudeMdCount} ${label}`));
   }
 
@@ -45,7 +54,7 @@ export function renderSessionLine(ctx: RenderContext): string {
     if (ctx.stdin.cli_version) {
       parts.push(dim(`codex ${ctx.stdin.cli_version}`));
     }
-  } else {
+  } else if (ctx.stdin.source !== 'grok') {
     if (ctx.thinkingEnabled) {
       parts.push(magenta('◐ thinking'));
     } else {
@@ -59,7 +68,9 @@ export function renderSessionLine(ctx: RenderContext): string {
     const usage = ctx.stdin.context_window?.current_usage;
     if (usage) {
       const input = formatTokens(usage.input_tokens ?? 0);
-      const cache = formatTokens((usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0));
+      const cache = formatTokens(
+        (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
+      );
       line += dim(` (in: ${input}, cache: ${cache})`);
     }
   }

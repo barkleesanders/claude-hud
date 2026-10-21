@@ -22,6 +22,10 @@ npm test
 
 See `TESTING.md` for the full testing strategy, fixtures, and snapshot updates.
 
+The HUD and `npm test` support Node 18+. Coverage uses c8 12 and requires
+Node 20.19+, Node 22.12+, or a newer supported Node release. CI runs the full
+suite on Node 18, 20, 24, and 26, with coverage on the newer versions.
+
 ## Code Style
 
 - Keep changes focused and small.

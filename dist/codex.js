@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import * as readline from 'readline';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as readline from 'node:readline';
 export function findLatestCodexSession(root = path.join(os.homedir(), '.codex', 'sessions')) {
     if (!fs.existsSync(root))
         return null;
@@ -46,7 +46,7 @@ export async function parseCodexSession(sessionPath) {
     };
     const toolMap = new Map();
     const agentMap = new Map();
-    let latestTodos = [];
+    const latestTodos = [];
     let cwd;
     let cliVersion;
     let usagePayload = null;
@@ -293,7 +293,9 @@ function parseJsonObject(raw) {
         return {};
     try {
         const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed
+            : {};
     }
     catch {
         return {};

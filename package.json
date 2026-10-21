@@ -18,7 +18,9 @@
     "test": "npm run build && node --test",
     "test:coverage": "npm run build && c8 --reporter=text --reporter=lcov node --test",
     "test:update-snapshots": "UPDATE_SNAPSHOTS=1 npm test",
-    "test:stdin": "echo '{\"model\":{\"display_name\":\"Opus 4.6\"},\"context_window\":{\"current_usage\":{\"input_tokens\":45000},\"context_window_size\":200000},\"cwd\":\".\"}'  | node dist/index.js"
+    "test:stdin": "echo '{\"model\":{\"display_name\":\"Opus 4.6\"},\"context_window\":{\"current_usage\":{\"input_tokens\":45000},\"context_window_size\":200000},\"cwd\":\".\"}'  | node dist/index.js",
+    "lint": "biome check .",
+    "check": "npm run lint && npm run test:coverage && npm audit --ignore-scripts --audit-level=low"
   },
   "keywords": [
     "claude-code",
@@ -46,6 +48,7 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@types/node": "^26.6.5",
     "c8": "^12.0.0",
     "typescript": "^7.0.2"

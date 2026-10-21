@@ -5,17 +5,45 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.x, 24.x, 26.x]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960d6fa5ab8cfbcb124ae81ddfbe93af671c # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+        if: matrix.node-version == '18.x'
       - run: npm run test:coverage
+        if: matrix.node-version != '18.x'
+      - run: npm audit --ignore-scripts --audit-level=low
+
+  dependabot-metadata:
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Verify Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3 (Node 24)
+        with:
+          github-token: ${{ github.token }}
+      - name: Record update type
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCIES: ${{ steps.metadata.outputs.dependency-names }}
+        run: |
+          test -n "$UPDATE_TYPE"
+          printf 'Update type: %s\nDependencies: %s\n' "$UPDATE_TYPE" "$DEPENDENCIES"

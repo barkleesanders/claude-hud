@@ -1,8 +1,15 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import * as readline from 'readline';
-import type { AgentEntry, StdinData, TodoItem, ToolEntry, TranscriptData, UsageData } from './types.js';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as readline from 'node:readline';
+import type {
+  AgentEntry,
+  StdinData,
+  TodoItem,
+  ToolEntry,
+  TranscriptData,
+  UsageData,
+} from './types.js';
 
 interface CodexLine {
   timestamp?: string;
@@ -51,7 +58,9 @@ export interface CodexSnapshot {
   sessionPath: string;
 }
 
-export function findLatestCodexSession(root: string = path.join(os.homedir(), '.codex', 'sessions')): string | null {
+export function findLatestCodexSession(
+  root: string = path.join(os.homedir(), '.codex', 'sessions'),
+): string | null {
   if (!fs.existsSync(root)) return null;
 
   let latest: { path: string; mtimeMs: number } | null = null;
@@ -97,7 +106,7 @@ export async function parseCodexSession(sessionPath: string): Promise<CodexSnaps
 
   const toolMap = new Map<string, ToolEntry>();
   const agentMap = new Map<string, AgentEntry>();
-  let latestTodos: TodoItem[] = [];
+  const latestTodos: TodoItem[] = [];
   let cwd: string | undefined;
   let cliVersion: string | undefined;
   let usagePayload: CodexUsagePayload | null = null;
@@ -243,7 +252,11 @@ function processCodexFunctionCall(
   });
 }
 
-function completeCodexExec(payload: Record<string, unknown>, timestamp: Date, toolMap: Map<string, ToolEntry>): void {
+function completeCodexExec(
+  payload: Record<string, unknown>,
+  timestamp: Date,
+  toolMap: Map<string, ToolEntry>,
+): void {
   const callId = asString(payload.call_id);
   if (!callId) return;
 
@@ -385,7 +398,9 @@ function parseJsonObject(raw: string | undefined): Record<string, unknown> {
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }

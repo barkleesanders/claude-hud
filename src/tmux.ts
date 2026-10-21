@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { spawnSync } from 'child_process';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { spawnSync } from 'node:child_process';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const distDir = path.dirname(fileURLToPath(import.meta.url));
 const hudPath = path.join(distDir, 'index.js');
@@ -56,12 +56,17 @@ export function buildCodexCommand(realCodex: string, codexArgs: string[]): strin
   return `${envPrefix} ${shellQuote(realCodex)}${args ? ` ${args}` : ''}`;
 }
 
-export function run(argv: string[] = process.argv.slice(2), env: NodeJS.ProcessEnv = process.env): number {
+export function run(
+  argv: string[] = process.argv.slice(2),
+  env: NodeJS.ProcessEnv = process.env,
+): number {
   const parsed = parseArgs(argv, env);
   const hudCommand = buildHudCommand(parsed.sessionPath);
 
   if (env.TMUX) {
-    const split = spawnSync('tmux', ['split-window', '-h', '-l', '64', hudCommand], { stdio: 'inherit' });
+    const split = spawnSync('tmux', ['split-window', '-h', '-l', '64', hudCommand], {
+      stdio: 'inherit',
+    });
     if (split.status !== 0) return split.status ?? 1;
     if (parsed.hudOnly) return 0;
 
@@ -72,24 +77,36 @@ export function run(argv: string[] = process.argv.slice(2), env: NodeJS.ProcessE
     return codex.status ?? 1;
   }
 
-  const firstCommand = parsed.hudOnly ? hudCommand : buildCodexCommand(parsed.realCodex, parsed.codexArgs);
-  const create = spawnSync('tmux', ['new-session', '-d', '-s', parsed.sessionName, firstCommand], { stdio: 'inherit' });
+  const firstCommand = parsed.hudOnly
+    ? hudCommand
+    : buildCodexCommand(parsed.realCodex, parsed.codexArgs);
+  const create = spawnSync('tmux', ['new-session', '-d', '-s', parsed.sessionName, firstCommand], {
+    stdio: 'inherit',
+  });
   if (create.status !== 0) return create.status ?? 1;
 
   if (!parsed.hudOnly) {
-    const split = spawnSync('tmux', ['split-window', '-t', parsed.sessionName, '-h', '-l', '64', hudCommand], {
-      stdio: 'inherit',
-    });
+    const split = spawnSync(
+      'tmux',
+      ['split-window', '-t', parsed.sessionName, '-h', '-l', '64', hudCommand],
+      {
+        stdio: 'inherit',
+      },
+    );
     if (split.status !== 0) return split.status ?? 1;
     spawnSync('tmux', ['select-pane', '-t', `${parsed.sessionName}:0.0`], { stdio: 'inherit' });
   }
 
   if (parsed.attach) {
-    const attach = spawnSync('tmux', ['attach-session', '-t', parsed.sessionName], { stdio: 'inherit' });
+    const attach = spawnSync('tmux', ['attach-session', '-t', parsed.sessionName], {
+      stdio: 'inherit',
+    });
     return attach.status ?? 0;
   }
 
-  console.log(`Started tmux session ${parsed.sessionName}. Attach with: tmux attach -t ${parsed.sessionName}`);
+  console.log(
+    `Started tmux session ${parsed.sessionName}. Attach with: tmux attach -t ${parsed.sessionName}`,
+  );
   return 0;
 }
 

@@ -1,12 +1,12 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderSessionLine } from '../dist/render/session-line.js';
-import { renderToolsLine } from '../dist/render/tools-line.js';
+import { test } from 'node:test';
 import { renderAgentsLine } from '../dist/render/agents-line.js';
-import { renderTodosLine } from '../dist/render/todos-line.js';
-import { renderRateLimitsLine } from '../dist/render/rate-limits-line.js';
-import { renderToString } from '../dist/render/index.js';
 import { getContextColor } from '../dist/render/colors.js';
+import { renderToString } from '../dist/render/index.js';
+import { renderRateLimitsLine } from '../dist/render/rate-limits-line.js';
+import { renderSessionLine } from '../dist/render/session-line.js';
+import { renderTodosLine } from '../dist/render/todos-line.js';
+import { renderToolsLine } from '../dist/render/tools-line.js';
 
 function baseContext() {
   return {

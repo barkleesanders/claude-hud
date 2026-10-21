@@ -19,8 +19,18 @@ export async function readStdin() {
     }
 }
 export function getContextPercent(stdin) {
-    const usage = stdin.context_window?.current_usage;
-    const size = stdin.context_window?.context_window_size;
+    const window = stdin.context_window;
+    if (!window) {
+        return 0;
+    }
+    if (typeof window.used_percentage === 'number') {
+        return Math.max(0, Math.min(100, Math.round(window.used_percentage)));
+    }
+    const size = window.context_window_size;
+    if (size && size > 0 && typeof window.context_tokens === 'number') {
+        return Math.round((window.context_tokens / size) * 100);
+    }
+    const usage = window.current_usage;
     if (!usage || !size || size === 0) {
         return 0;
     }

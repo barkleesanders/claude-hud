@@ -1,4 +1,4 @@
-import { yellow, green, dim } from './colors.js';
+import { dim, green, yellow } from './colors.js';
 export function renderTodosLine(ctx) {
     const { todos } = ctx.transcript;
     if (!todos || todos.length === 0) {
@@ -20,6 +20,6 @@ export function renderTodosLine(ctx) {
 function truncateContent(content, maxLen = 50) {
     if (content.length <= maxLen)
         return content;
-    return content.slice(0, maxLen - 3) + '...';
+    return `${content.slice(0, maxLen - 3)}...`;
 }
 //# sourceMappingURL=todos-line.js.map

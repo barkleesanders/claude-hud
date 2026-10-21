@@ -1,3 +1,4 @@
+import { isPoolStale } from '../pool-usage.js';
 import { dim, RESET } from './colors.js';
 const WHITE = '\x1b[38;2;220;220;220m';
 const ORANGE = '\x1b[38;2;255;176;85m';
@@ -22,7 +23,7 @@ function formatResetTime(isoStr, style = 'time') {
         return '';
     try {
         const date = new Date(isoStr);
-        if (isNaN(date.getTime()))
+        if (Number.isNaN(date.getTime()))
             return '';
         switch (style) {
             case 'time': {
@@ -83,27 +84,47 @@ export function renderRateLimitsLine(ctx) {
         return null;
     const lines = [];
     const barWidth = 10;
-    const currentLabel = labelWithWindow('current', usageData.five_hour, 300);
-    const weeklyLabel = labelWithWindow('weekly', usageData.seven_day, 10080);
+    const currentLabel = usageData.five_hour
+        ? labelWithWindow('current', usageData.five_hour, 300)
+        : '';
+    const weeklyLabel = usageData.seven_day
+        ? (usageData.seven_day.label ?? labelWithWindow('weekly', usageData.seven_day, 10080))
+        : '';
     const opusLabel = usageData.seven_day_opus
-        ? labelWithWindow('opus', usageData.seven_day_opus, 10080)
+        ? (usageData.seven_day_opus.label ?? labelWithWindow('opus', usageData.seven_day_opus, 10080))
         : 'opus';
     const sonnetLabel = usageData.seven_day_sonnet
-        ? labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080)
+        ? (usageData.seven_day_sonnet.label ??
+            labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080))
         : 'sonnet';
     // Determine the longest label for alignment
-    const labels = [currentLabel, weeklyLabel];
+    const labels = [];
+    if (usageData.five_hour)
+        labels.push(currentLabel);
+    if (usageData.seven_day)
+        labels.push(weeklyLabel);
     if (usageData.seven_day_opus?.utilization != null)
         labels.push(opusLabel);
     if (usageData.seven_day_sonnet?.utilization != null)
         labels.push(sonnetLabel);
+    for (const window of usageData.windows ?? []) {
+        if (window.label)
+            labels.push(window.label);
+    }
+    if (usageData.extra_usage?.is_enabled)
+        labels.push('extra');
+    for (const meter of usageData.dollar_meters ?? []) {
+        labels.push(meter.label || 'meter');
+    }
     if (usageData.codex_credits)
         labels.push('credits');
-    const padLen = Math.max(...labels.map(l => l.length));
-    // 5-hour (current) window
-    lines.push(renderWindow(currentLabel, usageData.five_hour, 'time', padLen, barWidth));
-    // 7-day (weekly) window
-    lines.push(renderWindow(weeklyLabel, usageData.seven_day, 'datetime', padLen, barWidth));
+    const padLen = Math.max(1, ...labels.map((l) => l.length));
+    if (usageData.five_hour) {
+        lines.push(renderWindow(currentLabel, usageData.five_hour, 'time', padLen, barWidth));
+    }
+    if (usageData.seven_day) {
+        lines.push(renderWindow(weeklyLabel, usageData.seven_day, 'datetime', padLen, barWidth));
+    }
     // Model-specific weekly windows (like CodexBar shows)
     if (usageData.seven_day_opus?.utilization != null) {
         lines.push(renderWindow(opusLabel, usageData.seven_day_opus, 'datetime', padLen, barWidth));
@@ -111,16 +132,25 @@ export function renderRateLimitsLine(ctx) {
     if (usageData.seven_day_sonnet?.utilization != null) {
         lines.push(renderWindow(sonnetLabel, usageData.seven_day_sonnet, 'datetime', padLen, barWidth));
     }
-    // Extra usage (if enabled)
-    const extra = usageData.extra_usage;
-    if (extra?.is_enabled) {
-        const extraPct = Math.round(extra.utilization ?? 0);
-        const extraUsed = (extra.used_credits / 100).toFixed(2);
-        const extraLimit = (extra.monthly_limit / 100).toFixed(2);
+    for (const window of usageData.windows ?? []) {
+        const label = window.label ?? 'usage';
+        lines.push(renderWindow(label, window, 'datetime', padLen, barWidth));
+    }
+    function renderDollarMeter(label, meter) {
+        const extraPct = Math.round(meter.utilization ?? 0);
+        const extraUsed = (meter.used_credits / 100).toFixed(2);
+        const extraLimit = (meter.monthly_limit / 100).toFixed(2);
         const extraBar = buildBar(extraPct, barWidth);
         const extraColor = colorForPct(extraPct);
-        const paddedLabel = 'extra'.padEnd(padLen);
+        const paddedLabel = label.padEnd(padLen);
         lines.push(`${WHITE}${paddedLabel}${RESET} ${extraBar} ${extraColor}$${extraUsed}${dim('/')}${RESET}${WHITE}$${extraLimit}${RESET}`);
+    }
+    const extra = usageData.extra_usage;
+    if (extra?.is_enabled) {
+        renderDollarMeter('extra', extra);
+    }
+    for (const meter of usageData.dollar_meters ?? []) {
+        renderDollarMeter(meter.label || 'meter', meter);
     }
     const credits = usageData.codex_credits;
     if (credits) {
@@ -138,5 +168,29 @@ export function renderRateLimitsLine(ctx) {
         lines.push(`${WHITE}${paddedLabel}${RESET} ${WHITE}${value}${RESET}`);
     }
     return lines.join('\n');
+}
+/** Pool lines: average use across the Team seats behind the LLM front door. */
+export function renderPoolLines(ctx) {
+    const pool = ctx.poolUsage;
+    if (!pool)
+        return null;
+    const barWidth = 10;
+    const padLen = Math.max(10, ...pool.windows.map((w) => w.label.length));
+    const seats = `${pool.seatsOk}/${pool.seatsTotal} seats`;
+    const staleNote = isPoolStale(pool) ? ` ${dim(`stale ${Math.round(pool.ageMs / 60_000)}m`)}` : '';
+    if (pool.windows.length === 0) {
+        return `${WHITE}${'pool'.padEnd(padLen)}${RESET} ${dim(`unavailable (${seats})`)}${staleNote}`;
+    }
+    return pool.windows
+        .map((w, i) => {
+        const window = { utilization: w.avgPct, resets_at: w.resetsAt };
+        const style = w.label === 'pool 5h' ? 'time' : 'datetime';
+        let line = renderWindow(w.label, window, style, padLen, barWidth);
+        line += ` ${dim(`peak ${Math.round(w.maxPct)}%`)}`;
+        if (i === 0)
+            line += ` ${dim('·')} ${WHITE}${seats}${RESET}${staleNote}`;
+        return line;
+    })
+        .join('\n');
 }
 //# sourceMappingURL=rate-limits-line.js.map

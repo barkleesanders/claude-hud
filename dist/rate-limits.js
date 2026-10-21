@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 const CACHE_DIR = '/tmp/claude';
 const CACHE_FILE = path.join(CACHE_DIR, 'statusline-usage-cache.json');
 const COOLDOWN_FILE = path.join(CACHE_DIR, 'statusline-usage-cooldown');
@@ -120,7 +120,7 @@ function isOnCooldown() {
         if (!fs.existsSync(COOLDOWN_FILE))
             return false;
         const stat = fs.statSync(COOLDOWN_FILE);
-        return (Date.now() - stat.mtimeMs) < COOLDOWN_MS;
+        return Date.now() - stat.mtimeMs < COOLDOWN_MS;
     }
     catch {
         return false;
@@ -139,9 +139,9 @@ function setCooldown() {
 }
 function makeHeaders(token) {
     return {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'anthropic-beta': BETA_HEADER,
         'User-Agent': getUserAgent(),
     };
@@ -159,7 +159,7 @@ async function fetchFromApi(token) {
         // Respect retry-after header if present
         const retryAfter = response.headers.get('retry-after');
         const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : 500;
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
         const retry = await fetch('https://api.anthropic.com/api/oauth/usage', {
             headers,
         });
