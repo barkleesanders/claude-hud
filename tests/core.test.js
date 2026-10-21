@@ -1,15 +1,15 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
+import * as fs from 'node:fs';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { parseTranscript } from '../dist/transcript.js';
 import { parseCodexSession } from '../dist/codex.js';
-import { buildCodexCommand, buildHudCommand, parseArgs } from '../dist/tmux.js';
 import { countConfigs } from '../dist/config-reader.js';
 import { getContextPercent, getModelName } from '../dist/stdin.js';
-import * as fs from 'node:fs';
+import { buildCodexCommand, buildHudCommand, parseArgs } from '../dist/tmux.js';
+import { parseTranscript } from '../dist/transcript.js';
 
 test('getContextPercent returns 0 when data is missing', () => {
   assert.equal(getContextPercent({}), 0);
@@ -154,11 +154,13 @@ test('parseTranscript extracts tool targets for common tools', async () => {
 test('parseTranscript truncates long bash commands in targets', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-'));
   const filePath = path.join(dir, 'bash.jsonl');
-  const longCommand = 'echo ' + 'x'.repeat(50);
+  const longCommand = `echo ${'x'.repeat(50)}`;
   const lines = [
     JSON.stringify({
       message: {
-        content: [{ type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: longCommand } }],
+        content: [
+          { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: longCommand } },
+        ],
       },
     }),
   ];
@@ -184,7 +186,12 @@ test('parseTranscript handles edge-case lines and error statuses', async () => {
       message: {
         content: [
           { type: 'tool_use', id: 'agent-1', name: 'Task', input: {} },
-          { type: 'tool_use', id: 'tool-error', name: 'Read', input: { path: '/tmp/fallback.txt' } },
+          {
+            type: 'tool_use',
+            id: 'tool-error',
+            name: 'Read',
+            input: { path: '/tmp/fallback.txt' },
+          },
           { type: 'tool_result', tool_use_id: 'tool-error', is_error: true },
           { type: 'tool_result', tool_use_id: 'missing-tool' },
         ],
@@ -250,11 +257,15 @@ test('countConfigs honors project and global config locations', async () => {
     await mkdir(path.join(homeDir, '.claude', 'rules', 'nested'), { recursive: true });
     await writeFile(path.join(homeDir, '.claude', 'CLAUDE.md'), 'global', 'utf8');
     await writeFile(path.join(homeDir, '.claude', 'rules', 'rule.md'), '# rule', 'utf8');
-    await writeFile(path.join(homeDir, '.claude', 'rules', 'nested', 'rule-nested.md'), '# rule nested', 'utf8');
+    await writeFile(
+      path.join(homeDir, '.claude', 'rules', 'nested', 'rule-nested.md'),
+      '# rule nested',
+      'utf8',
+    );
     await writeFile(
       path.join(homeDir, '.claude', 'settings.json'),
       JSON.stringify({ mcpServers: { one: {} }, hooks: { onStart: {} } }),
-      'utf8'
+      'utf8',
     );
     await writeFile(path.join(homeDir, '.claude.json'), '{bad json', 'utf8');
 
@@ -262,15 +273,23 @@ test('countConfigs honors project and global config locations', async () => {
     await writeFile(path.join(projectDir, 'CLAUDE.md'), 'project', 'utf8');
     await writeFile(path.join(projectDir, 'CLAUDE.local.md'), 'project-local', 'utf8');
     await writeFile(path.join(projectDir, '.claude', 'CLAUDE.md'), 'project-alt', 'utf8');
-    await writeFile(path.join(projectDir, '.claude', 'CLAUDE.local.md'), 'project-alt-local', 'utf8');
+    await writeFile(
+      path.join(projectDir, '.claude', 'CLAUDE.local.md'),
+      'project-alt-local',
+      'utf8',
+    );
     await writeFile(path.join(projectDir, '.claude', 'rules', 'rule2.md'), '# rule2', 'utf8');
     await writeFile(
       path.join(projectDir, '.claude', 'settings.json'),
       JSON.stringify({ mcpServers: { two: {}, three: {} }, hooks: { onStop: {} } }),
-      'utf8'
+      'utf8',
     );
     await writeFile(path.join(projectDir, '.claude', 'settings.local.json'), '{bad json', 'utf8');
-    await writeFile(path.join(projectDir, '.mcp.json'), JSON.stringify({ mcpServers: { four: {} } }), 'utf8');
+    await writeFile(
+      path.join(projectDir, '.mcp.json'),
+      JSON.stringify({ mcpServers: { four: {} } }),
+      'utf8',
+    );
 
     const counts = await countConfigs(projectDir);
     assert.equal(counts.claudeMdCount, 5);

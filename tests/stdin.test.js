@@ -1,5 +1,5 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { readStdin } from '../dist/stdin.js';
 
 test('readStdin returns null for TTY input', async () => {

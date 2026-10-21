@@ -1,6 +1,6 @@
-import type { RenderContext, RateLimitWindow } from '../types.js';
-import { dim, RESET } from './colors.js';
 import { isPoolStale } from '../pool-usage.js';
+import type { RateLimitWindow, RenderContext } from '../types.js';
+import { dim, RESET } from './colors.js';
 
 const WHITE = '\x1b[38;2;220;220;220m';
 const ORANGE = '\x1b[38;2;255;176;85m';
@@ -24,7 +24,7 @@ function formatResetTime(isoStr?: string, style: 'time' | 'datetime' | 'date' = 
   if (!isoStr) return '';
   try {
     const date = new Date(isoStr);
-    if (isNaN(date.getTime())) return '';
+    if (Number.isNaN(date.getTime())) return '';
 
     switch (style) {
       case 'time': {
@@ -82,7 +82,11 @@ function formatWindowDuration(minutes: number | undefined): string | null {
   return `${minutes}m`;
 }
 
-function labelWithWindow(baseLabel: string, window: RateLimitWindow, fallbackMinutes: number): string {
+function labelWithWindow(
+  baseLabel: string,
+  window: RateLimitWindow,
+  fallbackMinutes: number,
+): string {
   const duration = formatWindowDuration(window.window_minutes ?? fallbackMinutes);
   return duration ? `${duration} ${baseLabel}` : baseLabel;
 }
@@ -103,7 +107,8 @@ export function renderRateLimitsLine(ctx: RenderContext): string | null {
     ? (usageData.seven_day_opus.label ?? labelWithWindow('opus', usageData.seven_day_opus, 10080))
     : 'opus';
   const sonnetLabel = usageData.seven_day_sonnet
-    ? (usageData.seven_day_sonnet.label ?? labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080))
+    ? (usageData.seven_day_sonnet.label ??
+      labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080))
     : 'sonnet';
 
   // Determine the longest label for alignment
@@ -120,7 +125,7 @@ export function renderRateLimitsLine(ctx: RenderContext): string | null {
     labels.push(meter.label || 'meter');
   }
   if (usageData.codex_credits) labels.push('credits');
-  const padLen = Math.max(1, ...labels.map(l => l.length));
+  const padLen = Math.max(1, ...labels.map((l) => l.length));
 
   if (usageData.five_hour) {
     lines.push(renderWindow(currentLabel, usageData.five_hour, 'time', padLen, barWidth));
@@ -143,14 +148,19 @@ export function renderRateLimitsLine(ctx: RenderContext): string | null {
     lines.push(renderWindow(label, window, 'datetime', padLen, barWidth));
   }
 
-  function renderDollarMeter(label: string, meter: { utilization?: number; used_credits: number; monthly_limit: number }): void {
+  function renderDollarMeter(
+    label: string,
+    meter: { utilization?: number; used_credits: number; monthly_limit: number },
+  ): void {
     const extraPct = Math.round(meter.utilization ?? 0);
     const extraUsed = (meter.used_credits / 100).toFixed(2);
     const extraLimit = (meter.monthly_limit / 100).toFixed(2);
     const extraBar = buildBar(extraPct, barWidth);
     const extraColor = colorForPct(extraPct);
     const paddedLabel = label.padEnd(padLen);
-    lines.push(`${WHITE}${paddedLabel}${RESET} ${extraBar} ${extraColor}$${extraUsed}${dim('/')}${RESET}${WHITE}$${extraLimit}${RESET}`);
+    lines.push(
+      `${WHITE}${paddedLabel}${RESET} ${extraBar} ${extraColor}$${extraUsed}${dim('/')}${RESET}${WHITE}$${extraLimit}${RESET}`,
+    );
   }
 
   const extra = usageData.extra_usage;
@@ -183,7 +193,7 @@ export function renderPoolLines(ctx: RenderContext): string | null {
   const pool = ctx.poolUsage;
   if (!pool) return null;
   const barWidth = 10;
-  const padLen = Math.max(10, ...pool.windows.map(w => w.label.length));
+  const padLen = Math.max(10, ...pool.windows.map((w) => w.label.length));
   const seats = `${pool.seatsOk}/${pool.seatsTotal} seats`;
   const staleNote = isPoolStale(pool) ? ` ${dim(`stale ${Math.round(pool.ageMs / 60_000)}m`)}` : '';
 

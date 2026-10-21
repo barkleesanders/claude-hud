@@ -1,5 +1,5 @@
-import { dim, RESET } from './colors.js';
 import { isPoolStale } from '../pool-usage.js';
+import { dim, RESET } from './colors.js';
 const WHITE = '\x1b[38;2;220;220;220m';
 const ORANGE = '\x1b[38;2;255;176;85m';
 function colorForPct(pct) {
@@ -23,7 +23,7 @@ function formatResetTime(isoStr, style = 'time') {
         return '';
     try {
         const date = new Date(isoStr);
-        if (isNaN(date.getTime()))
+        if (Number.isNaN(date.getTime()))
             return '';
         switch (style) {
             case 'time': {
@@ -94,7 +94,8 @@ export function renderRateLimitsLine(ctx) {
         ? (usageData.seven_day_opus.label ?? labelWithWindow('opus', usageData.seven_day_opus, 10080))
         : 'opus';
     const sonnetLabel = usageData.seven_day_sonnet
-        ? (usageData.seven_day_sonnet.label ?? labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080))
+        ? (usageData.seven_day_sonnet.label ??
+            labelWithWindow('sonnet', usageData.seven_day_sonnet, 10080))
         : 'sonnet';
     // Determine the longest label for alignment
     const labels = [];
@@ -117,7 +118,7 @@ export function renderRateLimitsLine(ctx) {
     }
     if (usageData.codex_credits)
         labels.push('credits');
-    const padLen = Math.max(1, ...labels.map(l => l.length));
+    const padLen = Math.max(1, ...labels.map((l) => l.length));
     if (usageData.five_hour) {
         lines.push(renderWindow(currentLabel, usageData.five_hour, 'time', padLen, barWidth));
     }
@@ -174,7 +175,7 @@ export function renderPoolLines(ctx) {
     if (!pool)
         return null;
     const barWidth = 10;
-    const padLen = Math.max(10, ...pool.windows.map(w => w.label.length));
+    const padLen = Math.max(10, ...pool.windows.map((w) => w.label.length));
     const seats = `${pool.seatsOk}/${pool.seatsTotal} seats`;
     const staleNote = isPoolStale(pool) ? ` ${dim(`stale ${Math.round(pool.ageMs / 60_000)}m`)}` : '';
     if (pool.windows.length === 0) {

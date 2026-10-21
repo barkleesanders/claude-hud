@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 export interface RateLimitWindow {
   utilization: number;
@@ -74,7 +74,7 @@ function getOAuthToken(): string | null {
     try {
       const blob = execSync(
         'security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null',
-        { encoding: 'utf8', timeout: 3000 }
+        { encoding: 'utf8', timeout: 3000 },
       ).trim();
       if (blob) {
         const parsed = JSON.parse(blob);
@@ -104,7 +104,7 @@ function getOAuthToken(): string | null {
     try {
       const blob = execSync(
         'timeout 2 secret-tool lookup service "Claude Code-credentials" 2>/dev/null',
-        { encoding: 'utf8', timeout: 3000 }
+        { encoding: 'utf8', timeout: 3000 },
       ).trim();
       if (blob) {
         const parsed = JSON.parse(blob);
@@ -147,7 +147,7 @@ function isOnCooldown(): boolean {
   try {
     if (!fs.existsSync(COOLDOWN_FILE)) return false;
     const stat = fs.statSync(COOLDOWN_FILE);
-    return (Date.now() - stat.mtimeMs) < COOLDOWN_MS;
+    return Date.now() - stat.mtimeMs < COOLDOWN_MS;
   } catch {
     return false;
   }
@@ -166,9 +166,9 @@ function setCooldown(): void {
 
 function makeHeaders(token: string): Record<string, string> {
   return {
-    'Accept': 'application/json',
+    Accept: 'application/json',
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
     'anthropic-beta': BETA_HEADER,
     'User-Agent': getUserAgent(),
   };
@@ -191,7 +191,7 @@ async function fetchFromApi(token: string): Promise<UsageData | null> {
     // Respect retry-after header if present
     const retryAfter = response.headers.get('retry-after');
     const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : 500;
-    await new Promise(resolve => setTimeout(resolve, delayMs));
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
 
     const retry = await fetch('https://api.anthropic.com/api/oauth/usage', {
       headers,

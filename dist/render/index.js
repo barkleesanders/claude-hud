@@ -1,14 +1,14 @@
-import { renderSessionLine } from './session-line.js';
-import { renderToolsLine } from './tools-line.js';
 import { renderAgentsLine } from './agents-line.js';
-import { renderTodosLine } from './todos-line.js';
-import { renderPoolLines, renderRateLimitsLine } from './rate-limits-line.js';
 import { RESET } from './colors.js';
+import { renderPoolLines, renderRateLimitsLine } from './rate-limits-line.js';
+import { renderSessionLine } from './session-line.js';
+import { renderTodosLine } from './todos-line.js';
+import { renderToolsLine } from './tools-line.js';
 export function render(ctx) {
     process.stdout.write(renderToString(ctx));
 }
 export function renderToString(ctx) {
-    return collectRenderLines(ctx).map(formatOutputLine).join('\n') + '\n';
+    return `${collectRenderLines(ctx).map(formatOutputLine).join('\n')}\n`;
 }
 function collectRenderLines(ctx) {
     const lines = [];

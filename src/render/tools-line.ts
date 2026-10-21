@@ -1,5 +1,5 @@
 import type { RenderContext } from '../types.js';
-import { yellow, green, cyan, dim } from './colors.js';
+import { cyan, dim, green, yellow } from './colors.js';
 
 export function renderToolsLine(ctx: RenderContext): string | null {
   const { tools } = ctx.transcript;
@@ -46,8 +46,8 @@ function truncatePath(path: string, maxLen: number = 20): string {
   const filename = parts.pop() || path;
 
   if (filename.length >= maxLen) {
-    return filename.slice(0, maxLen - 3) + '...';
+    return `${filename.slice(0, maxLen - 3)}...`;
   }
 
-  return '.../' + filename;
+  return `.../${filename}`;
 }

@@ -1,14 +1,12 @@
 #!/usr/bin/env node
+import { countCodexConfigs, countConfigs, readThinkingEnabled } from './config-reader.js';
+import { getGitInfo } from './git-info.js';
+import { getPoolUsage } from './pool-usage.js';
+import { fetchUsageData } from './rate-limits.js';
+import { render, renderToString } from './render/index.js';
 import { readStdin } from './stdin.js';
 import { parseTranscript } from './transcript.js';
-import { render, renderToString } from './render/index.js';
-import { countCodexConfigs, countConfigs } from './config-reader.js';
-import { fetchUsageData } from './rate-limits.js';
-import { getPoolUsage } from './pool-usage.js';
-import { getGitInfo } from './git-info.js';
-import { readThinkingEnabled } from './config-reader.js';
-import type { RenderContext, TranscriptData, UsageData } from './types.js';
-import type { StdinData } from './types.js';
+import type { RenderContext, StdinData, TranscriptData, UsageData } from './types.js';
 
 function usageDataFromGrok(stdin: StdinData): UsageData | null {
   const grok = stdin.grok_usage;
@@ -25,6 +23,7 @@ function usageDataFromGrok(stdin: StdinData): UsageData | null {
   }
   return data.seven_day || data.extra_usage || data.codex_credits || data.windows ? data : null;
 }
+
 import { fileURLToPath } from 'node:url';
 import { findLatestCodexSession, parseCodexSession } from './codex.js';
 
@@ -154,7 +153,9 @@ async function runCodexHud(deps: MainDeps, args: CodexArgs): Promise<void> {
     }
 
     const snapshot = await parseCodexSession(sessionPath);
-    const { claudeMdCount, rulesCount, mcpCount, hooksCount } = await countCodexConfigs(snapshot.stdin.cwd);
+    const { claudeMdCount, rulesCount, mcpCount, hooksCount } = await countCodexConfigs(
+      snapshot.stdin.cwd,
+    );
 
     const ctx: RenderContext = {
       stdin: snapshot.stdin,
@@ -213,7 +214,10 @@ function getRefreshMs(): number {
   return 1000;
 }
 
-export function formatSessionDuration(sessionStart?: Date, now: () => number = () => Date.now()): string {
+export function formatSessionDuration(
+  sessionStart?: Date,
+  now: () => number = () => Date.now(),
+): string {
   if (!sessionStart) {
     return '';
   }

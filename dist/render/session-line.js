@@ -1,5 +1,5 @@
 import { getContextPercent, getModelName } from '../stdin.js';
-import { coloredBar, cyan, dim, red, green, magenta, getContextColor, RESET } from './colors.js';
+import { coloredBar, cyan, dim, getContextColor, green, magenta, RESET, red } from './colors.js';
 const RED_RGB = '\x1b[38;2;255;85;85m';
 export function renderSessionLine(ctx) {
     const model = getModelName(ctx.stdin);
