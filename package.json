@@ -20,7 +20,15 @@
     "test:update-snapshots": "UPDATE_SNAPSHOTS=1 npm test",
     "test:stdin": "echo '{\"model\":{\"display_name\":\"Opus 4.6\"},\"context_window\":{\"current_usage\":{\"input_tokens\":45000},\"context_window_size\":200000},\"cwd\":\".\"}'  | node dist/index.js"
   },
-  "keywords": ["claude-code", "codex", "statusline", "hud", "rate-limits", "git", "cli"],
+  "keywords": [
+    "claude-code",
+    "codex",
+    "statusline",
+    "hud",
+    "rate-limits",
+    "git",
+    "cli"
+  ],
   "author": "Barklee Sanders",
   "contributors": [
     "Jarrod Watts <https://github.com/jarrodwatts>"
@@ -38,8 +46,8 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
+    "@types/node": "^26.6.5",
     "c8": "^12.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }
